@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
+	gitscanner "github.com/jgabor/gitfetch/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +33,41 @@ var refreshCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("refreshing %d repos...\n", len(cfg.Repos))
+
+		results := gitscanner.ScanAll(cfg.Repos)
+
+		cachePath, err := config.CachePath()
+		if err != nil {
+			return fmt.Errorf("resolving cache path: %w", err)
+		}
+
+		c, err := cache.Load(cachePath)
+		if err != nil {
+			return fmt.Errorf("loading cache: %w", err)
+		}
+
+		ok, fail := 0, 0
+		for _, r := range results {
+			c.Repos[r.RepoPath] = cache.RepoEntry{
+				LastCommitDate: r.LastCommitDate,
+				LastTagDate:    r.LastTagDate,
+				Error:          r.Error,
+				ScannedAt:      r.ScannedAt,
+			}
+			if r.Error != "" {
+				fmt.Fprintf(os.Stderr, "  error: %s: %s\n", r.RepoPath, r.Error)
+				fail++
+			} else {
+				fmt.Printf("  ok: %s\n", r.RepoPath)
+				ok++
+			}
+		}
+
+		if err := cache.Save(cachePath, c); err != nil {
+			return fmt.Errorf("saving cache: %w", err)
+		}
+
+		fmt.Printf("\nrefreshed %d repos: %d ok, %d failed\n", len(results), ok, fail)
 		return nil
 	},
 }
