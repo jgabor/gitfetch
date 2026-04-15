@@ -47,3 +47,13 @@
 **Verified**: `go build ./...` OK, `go vet ./...` OK, `go test ./...` 75/75 PASS (6 new TUI tests)
 **Next**: Task 6 — plan-level freshness checkpoint
 **Context**: TUI uses bubbletea with alt screen · keybindings: j/k navigate, r refresh (async scan via tea.Cmd), a add repo (inline text input), d/x remove repo, q quit · add/remove persist config via config.Save · refresh writes cache via cache.Save · display reuses BuildRows/FormatRow from internal/display
+
+## Cycle 6 · 2026-04-15
+
+**What**: plan-level freshness checkpoint — created VISION.md, verified CHANGELOG.md and PROGRESS.md coverage
+**Commit**: 39863ea docs: add VISION.md and mark plan complete
+**Inspiration**: none
+**Discovered**: none
+**Verified**: N/A: docs-only
+**Next**: plan complete, all tasks shipped
+**Context**: freshness checkpoint · verified CHANGELOG has Added entries for all tasks · verified PROGRESS has cycles 1-5 · created VISION.md per Decision 1
