@@ -37,3 +37,13 @@
 **Verified**: `go build ./...` OK, `go vet ./...` OK, `go test ./...` 69/69 PASS · smoke-tested empty cache (shows suggestion) and populated cache (renders dashboard)
 **Next**: Task 5 — TUI for repo management
 **Context**: root command = config load → cache load → FormatDashboard · refresh command = ScanAll → cache write → FormatDashboard · empty cache shows "No repos tracked. Run `gitfetch refresh` to scan." · print path has zero git/exec calls (sub-500ms guarantee)
+
+## Cycle 5 · 2026-04-15
+
+**What**: bubbletea TUI (internal/tui) for interactive repo management — navigate repos, inline refresh, add/remove repos with config persistence
+**Commit**: e966b5c feat: add bubbletea TUI for interactive repo management
+**Inspiration**: charmbracelet/bubbletea for Model-Update-View TUI pattern
+**Discovered**: none
+**Verified**: `go build ./...` OK, `go vet ./...` OK, `go test ./...` 75/75 PASS (6 new TUI tests)
+**Next**: Task 6 — plan-level freshness checkpoint
+**Context**: TUI uses bubbletea with alt screen · keybindings: j/k navigate, r refresh (async scan via tea.Cmd), a add repo (inline text input), d/x remove repo, q quit · add/remove persist config via config.Save · refresh writes cache via cache.Save · display reuses BuildRows/FormatRow from internal/display

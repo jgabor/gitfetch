@@ -84,7 +84,7 @@ Data flow: config → scanner → cache → decay tiers → display. Default com
 
 ### Task 5: TUI for repo management
 **Depends on**: Task 4
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN gitfetch tui is launched WHEN the interface loads THEN it shows a checklist of configured repos with current decay status
 ▸ GIVEN the TUI is showing repos WHEN the user triggers an inline refresh THEN scan data updates and the display refreshes in place

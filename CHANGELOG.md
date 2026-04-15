@@ -18,3 +18,5 @@
 - `gitfetch` default command reads cache and prints formatted decay dashboard (cache-only, no git calls)
 - `gitfetch refresh` now displays the formatted dashboard after scanning and writing cache
 - Empty cache prints suggestion message directing user to `gitfetch refresh`
+- Bubbletea TUI (`gitfetch tui`) for interactive repo management with navigation, inline refresh, add/remove repos
+- Key bindings: j/k navigate, r refresh, a add repo, d/x remove repo, q quit
