@@ -6,6 +6,7 @@ import (
 
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
+	"github.com/jgabor/gitfetch/internal/display"
 	gitscanner "github.com/jgabor/gitfetch/internal/git"
 	"github.com/spf13/cobra"
 )
@@ -15,12 +16,22 @@ var rootCmd = &cobra.Command{
 	Short: "Repo decay tracker — neofetch for git repos",
 	Long:  "gitfetch scans git repos for staleness and displays a color-coded decay dashboard.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, path, err := config.LoadOrCreate()
+		_, _, err := config.LoadOrCreate()
 		if err != nil {
 			return err
 		}
-		fmt.Printf("config: %s\n", path)
-		fmt.Printf("repos: %v\n", cfg.Repos)
+
+		cachePath, err := config.CachePath()
+		if err != nil {
+			return fmt.Errorf("resolving cache path: %w", err)
+		}
+
+		c, err := cache.Load(cachePath)
+		if err != nil {
+			return fmt.Errorf("loading cache: %w", err)
+		}
+
+		fmt.Print(display.FormatDashboard(c.Repos))
 		return nil
 	},
 }
@@ -68,6 +79,7 @@ var refreshCmd = &cobra.Command{
 		}
 
 		fmt.Printf("\nrefreshed %d repos: %d ok, %d failed\n", len(results), ok, fail)
+		fmt.Print(display.FormatDashboard(c.Repos))
 		return nil
 	},
 }
