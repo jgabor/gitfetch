@@ -11,3 +11,7 @@
 - JSON cache engine (internal/cache) with read/write to XDG_DATA_HOME/gitfetch/cache.json
 - `gitfetch refresh` command scans configured repos and writes results to cache
 - 17 new tests covering scanner (commits, v-tags, errors, edge cases) and cache (roundtrip, empty, errors)
+- Decay tier classification (internal/decay) with four tiers: fresh (<30d), stale (<90d), decayed (<180d), dead (≥180d)
+- Lipgloss-based dashboard formatting (internal/display) with color-coded progress bars per tier
+- Boundary-tested tier classification at 29/30/31, 89/90/91, 179/180/181 day thresholds
+- 40 new tests covering decay classification (24) and display formatting (16)

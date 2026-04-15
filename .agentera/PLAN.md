@@ -64,7 +64,7 @@ Data flow: config → scanner → cache → decay tiers → display. Default com
 
 ### Task 3: Decay calculation and display formatting
 **Depends on**: Task 1
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN a repo with a commit 10 days ago WHEN decay is calculated THEN it is classified as "fresh"
 ▸ GIVEN a repo with a commit 60 days ago WHEN decay is calculated THEN it is classified as "stale"

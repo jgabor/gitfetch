@@ -17,3 +17,13 @@
 **Next**: Task 3 — decay calculation and display formatting
 **Context**: scanner uses `git log -1 --format=%ct` for commits, `git for-each-ref --sort=-creatordate refs/tags/v*` for v-tags · cache stores per-repo results as map[string]RepoEntry · refresh scans all repos, writes cache, prints summary
 **Context**: bootstrap only · no scope creep into scanning/cache/display/tui · TOML config, XDG paths, cobra subcommands
+
+## Cycle 3 · 2026-04-15
+
+**What**: decay tier classification (internal/decay) and lipgloss display formatting (internal/display) — four tiers, color-coded progress bars, dashboard renderer
+**Commit**: 751df3c feat: add decay tier classification and lipgloss display formatting
+**Inspiration**: charmbracelet/lipgloss for terminal styling, tiered progress bars for visual decay representation
+**Discovered**: none
+**Verified**: `go build ./...` OK, `go vet ./...` OK, `go test ./...` 69/69 PASS (12 config + 9 cache + 8 scanner + 24 decay + 16 display)
+**Next**: Task 4 — print and refresh commands (wire decay/display into CLI)
+**Context**: decay thresholds — fresh <30d, stale <90d, decayed <180d, dead ≥180d · progress bar shows age within tier range · display takes cache data, applies decay, renders formatted string · NOT wired into CLI yet
