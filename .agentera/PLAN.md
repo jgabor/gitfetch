@@ -93,7 +93,7 @@ Data flow: config → scanner → cache → decay tiers → display. Default com
 
 ### Task 6: Plan-level freshness checkpoint
 **Depends on**: Task 1, Task 2, Task 3, Task 4, Task 5
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN this plan's work has shipped WHEN CHANGELOG.md is checked THEN it has an [Unreleased] section with Added entries summarizing each task's user-visible impact
 ▸ GIVEN this plan is complete WHEN PROGRESS.md is checked THEN it has at least one cycle entry whose What field summarizes the plan
