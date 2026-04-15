@@ -8,6 +8,7 @@ import (
 	"github.com/jgabor/gitfetch/internal/config"
 	"github.com/jgabor/gitfetch/internal/display"
 	gitscanner "github.com/jgabor/gitfetch/internal/git"
+	"github.com/jgabor/gitfetch/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -88,12 +89,22 @@ var tuiCmd = &cobra.Command{
 	Use:   "tui",
 	Short: "Interactive repo management",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, _, err := config.LoadOrCreate()
+		cfg, cfgPath, err := config.LoadOrCreate()
 		if err != nil {
 			return err
 		}
-		fmt.Printf("tui: %d repos configured\n", len(cfg.Repos))
-		return nil
+
+		cachePath, err := config.CachePath()
+		if err != nil {
+			return fmt.Errorf("resolving cache path: %w", err)
+		}
+
+		c, err := cache.Load(cachePath)
+		if err != nil {
+			return fmt.Errorf("loading cache: %w", err)
+		}
+
+		return tui.Run(cfg, cfgPath, c, cachePath)
 	},
 }
 
