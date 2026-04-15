@@ -52,7 +52,7 @@ Data flow: config → scanner → cache → decay tiers → display. Default com
 
 ### Task 2: Git scanner and cache engine
 **Depends on**: Task 1
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN a configured repo with recent commits WHEN the scanner runs THEN the cache contains the last commit date for that repo
 ▸ GIVEN a configured repo with v-prefixed tags WHEN the scanner runs THEN the cache contains the most recent tag date
@@ -105,4 +105,4 @@ Data flow: config → scanner → cache → decay tiers → display. Default com
 ▸ GIVEN the user runs gitfetch tui WHEN the interface opens THEN they can add repos, remove repos, and trigger inline refreshes
 
 ## Surprises
-[Populated by realisera during execution when reality diverges from plan]
+- Git signing (GPG/SSH) must be disabled in test repos via `commit.gpgsign=false`; user's global gitconfig requires signing by default
