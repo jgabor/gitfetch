@@ -75,7 +75,7 @@ Data flow: config → scanner → cache → decay tiers → display. Default com
 
 ### Task 4: Print and refresh commands
 **Depends on**: Task 2, Task 3
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN a populated cache WHEN gitfetch runs with no arguments THEN it prints the formatted decay dashboard and exits
 ▸ GIVEN an empty cache WHEN gitfetch runs THEN it prints a message suggesting gitfetch refresh and exits

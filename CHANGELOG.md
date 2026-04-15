@@ -15,3 +15,6 @@
 - Lipgloss-based dashboard formatting (internal/display) with color-coded progress bars per tier
 - Boundary-tested tier classification at 29/30/31, 89/90/91, 179/180/181 day thresholds
 - 40 new tests covering decay classification (24) and display formatting (16)
+- `gitfetch` default command reads cache and prints formatted decay dashboard (cache-only, no git calls)
+- `gitfetch refresh` now displays the formatted dashboard after scanning and writing cache
+- Empty cache prints suggestion message directing user to `gitfetch refresh`

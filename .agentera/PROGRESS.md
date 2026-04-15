@@ -27,3 +27,13 @@
 **Verified**: `go build ./...` OK, `go vet ./...` OK, `go test ./...` 69/69 PASS (12 config + 9 cache + 8 scanner + 24 decay + 16 display)
 **Next**: Task 4 — print and refresh commands (wire decay/display into CLI)
 **Context**: decay thresholds — fresh <30d, stale <90d, decayed <180d, dead ≥180d · progress bar shows age within tier range · display takes cache data, applies decay, renders formatted string · NOT wired into CLI yet
+
+## Cycle 4 · 2026-04-15
+
+**What**: wired print (default) and refresh commands to display dashboard — root command reads cache and renders formatted output; refresh command displays dashboard after scan-and-write
+**Commit**: 05dcba0 feat: wire print and refresh commands to display dashboard
+**Inspiration**: cache-first architecture — default command only touches config+cache+display, no git subprocess calls
+**Discovered**: none
+**Verified**: `go build ./...` OK, `go vet ./...` OK, `go test ./...` 69/69 PASS · smoke-tested empty cache (shows suggestion) and populated cache (renders dashboard)
+**Next**: Task 5 — TUI for repo management
+**Context**: root command = config load → cache load → FormatDashboard · refresh command = ScanAll → cache write → FormatDashboard · empty cache shows "No repos tracked. Run `gitfetch refresh` to scan." · print path has zero git/exec calls (sub-500ms guarantee)
