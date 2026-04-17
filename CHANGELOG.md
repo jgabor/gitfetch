@@ -33,3 +33,6 @@
 - `cache.FilterByRepos` centralizes the "filter cache by configured repos" logic; `cmd/gitfetch` and `internal/tui` now share a single source of truth
 - Scanner skips author and remote collection when no `--author`/`--remote` filter is set, restoring sub-500ms refresh on repos with long history
 - `DiscoverRepos` now returns `([]string, error)` so unreadable directories surface a wrapped error instead of a silent single-path fallback
+
+### Fixed
+- TUI `r` key now actually triggers a refresh: scans all tracked repos, shows a `scanning…` status, writes the cache on disk, and updates displayed rows

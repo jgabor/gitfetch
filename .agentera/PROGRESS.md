@@ -97,3 +97,13 @@
 **Verified**: `go build ./...` OK · `go test ./...` all packages pass (git package adds 9 new tests) · `go run ./cmd/gitfetch refresh` scans 16 repos cleanly · default `gitfetch` completes in 22ms (well under 500ms VISION target)
 **Next**: PLAN Task 3 (fix broken `r` refresh) or Task 4 (remove decay.Tier.Label alias); Task 3 is the critical Audit 2 finding
 **Context**: plan-driven Task 2 · scope: `internal/git/scanner.go`, `internal/git/scanner_test.go`, `internal/tui/tui.go` caller fix · unknowns: none · constraints preserved (cache-first, no scope creep into cache persistence)
+
+## Cycle · 2026-04-17 (PLAN Task 3)
+
+**What**: wired TUI `r` key to scan + persist cache (Audit 2 CRITICAL fix); startScan promoted from dead code to active path
+**Commit**: 3d5fcec fix(tui): wire 'r' key to trigger scan + cache write
+**Inspiration**: existing startScan/handleScanDone plumbing — the missing wire was just `handleNormalKeys` returning a cmd
+**Discovered**: `handleNormalKeys` previously had no return, so `Update` had no way to propagate any future cmd — signature change was load-bearing; other pre-existing tui.go linter hints still present (minmax, slices.Contains, QF1012)
+**Verified**: `go build ./...` OK · `go test ./...` all packages pass · smoke driver inside-module sends `tea.KeyMsg{r}`, observes non-nil cmd → scanDoneMsg → cache.json on disk gets the scanned repo entry (1 entry written for the tempdir repo)
+**Next**: PLAN Task 4 (remove decay.Tier.Label alias — tiny), or Task 5 (decompose handleAdding, depends on Task 3 ✓ + Task 4)
+**Context**: plan-driven Task 3 · scope: `internal/tui/tui.go` (handleNormalKeys, Update, handleScanDone, scanning field), `internal/tui/tui_test.go` (4 new Update-driven tests) · constraint preserved: no daemon, no network, scanning runs in goroutine-free tea.Cmd · unknown: none

@@ -59,7 +59,7 @@ No new packages, no dependency direction changes, no framework additions. The di
 
 ### Task 3: Fix broken `r` refresh
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN a TUI in `modeNormal` WHEN the user presses `r` THEN `handleNormalKeys` returns a non-nil `tea.Cmd`
 ▸ GIVEN that `tea.Cmd` WHEN invoked THEN the TUI transitions into a scanning state visible to the user (mode change, status line, or equivalent observable effect)
