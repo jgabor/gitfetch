@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 	Short: "Repo decay tracker — neofetch for git repos",
 	Long:  "gitfetch scans git repos for staleness and displays a color-coded decay dashboard.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		_, _, err := config.LoadOrCreate()
+		cfg, _, err := config.LoadOrCreate()
 		if err != nil {
 			return err
 		}
@@ -32,10 +32,26 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("loading cache: %w", err)
 		}
 
-		fmt.Print(display.FormatDashboard(c.Repos))
+		repoSet := make(map[string]bool, len(cfg.Repos))
+		for _, r := range cfg.Repos {
+			repoSet[r] = true
+		}
+		filtered := make(map[string]cache.RepoEntry, len(cfg.Repos))
+		for path, entry := range c.Repos {
+			if repoSet[path] {
+				filtered[path] = entry
+			}
+		}
+
+		fmt.Print(display.FormatDashboard(filtered))
 		return nil
 	},
 }
+
+var (
+	authorFilter string
+	remoteFilter string
+)
 
 var refreshCmd = &cobra.Command{
 	Use:   "refresh",
@@ -46,7 +62,11 @@ var refreshCmd = &cobra.Command{
 			return err
 		}
 
-		results := gitscanner.ScanAll(cfg.Repos)
+		opts := gitscanner.ScanOptions{
+			Author: authorFilter,
+			Remote: remoteFilter,
+		}
+		results := gitscanner.ScanAll(cfg.Repos, opts)
 
 		cachePath, err := config.CachePath()
 		if err != nil {
@@ -58,11 +78,22 @@ var refreshCmd = &cobra.Command{
 			return fmt.Errorf("loading cache: %w", err)
 		}
 
+		repoSet := make(map[string]bool, len(cfg.Repos))
+		for _, r := range cfg.Repos {
+			repoSet[r] = true
+		}
+		for key := range c.Repos {
+			if !repoSet[key] {
+				delete(c.Repos, key)
+			}
+		}
+
 		ok, fail := 0, 0
 		for _, r := range results {
 			c.Repos[r.RepoPath] = cache.RepoEntry{
 				LastCommitDate: r.LastCommitDate,
 				LastTagDate:    r.LastTagDate,
+				LastTag:        r.LastTag,
 				Error:          r.Error,
 				ScannedAt:      r.ScannedAt,
 			}
@@ -109,6 +140,8 @@ var tuiCmd = &cobra.Command{
 }
 
 func init() {
+	refreshCmd.Flags().StringVar(&authorFilter, "author", "", "filter repos by author name (substring match)")
+	refreshCmd.Flags().StringVar(&remoteFilter, "remote", "", "filter repos by remote URL (substring match)")
 	rootCmd.AddCommand(refreshCmd)
 	rootCmd.AddCommand(tuiCmd)
 }

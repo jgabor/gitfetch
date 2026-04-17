@@ -11,6 +11,7 @@ import (
 type RepoEntry struct {
 	LastCommitDate *time.Time `json:"last_commit_date,omitempty"`
 	LastTagDate    *time.Time `json:"last_tag_date,omitempty"`
+	LastTag        string     `json:"last_tag,omitempty"`
 	Error          string     `json:"error,omitempty"`
 	ScannedAt      time.Time  `json:"scanned_at"`
 }

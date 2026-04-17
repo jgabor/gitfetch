@@ -73,7 +73,7 @@ func gitTag(t *testing.T, dir, name string) {
 
 func TestScanRepoWithCommits(t *testing.T) {
 	dir := makeRepoWithCommit(t)
-	result := ScanRepo(dir)
+	result := ScanRepo(dir, ScanOptions{})
 
 	if result.Error != "" {
 		t.Fatalf("unexpected error: %s", result.Error)
@@ -91,7 +91,7 @@ func TestScanRepoWithCommits(t *testing.T) {
 
 func TestScanRepoWithVTag(t *testing.T) {
 	dir := makeRepoWithCommitAndTag(t, "v1.0.0")
-	result := ScanRepo(dir)
+	result := ScanRepo(dir, ScanOptions{})
 
 	if result.Error != "" {
 		t.Fatalf("unexpected error: %s", result.Error)
@@ -106,7 +106,7 @@ func TestScanRepoWithVTag(t *testing.T) {
 
 func TestScanRepoNoTags(t *testing.T) {
 	dir := makeRepoWithCommit(t)
-	result := ScanRepo(dir)
+	result := ScanRepo(dir, ScanOptions{})
 
 	if result.Error != "" {
 		t.Fatalf("unexpected error: %s", result.Error)
@@ -118,7 +118,7 @@ func TestScanRepoNoTags(t *testing.T) {
 
 func TestScanRepoNonGitDirectory(t *testing.T) {
 	dir := t.TempDir()
-	result := ScanRepo(dir)
+	result := ScanRepo(dir, ScanOptions{})
 
 	if result.Error == "" {
 		t.Fatal("expected error for non-git directory")
@@ -129,7 +129,7 @@ func TestScanRepoNonGitDirectory(t *testing.T) {
 }
 
 func TestScanRepoMissingPath(t *testing.T) {
-	result := ScanRepo("/nonexistent/path/to/repo")
+	result := ScanRepo("/nonexistent/path/to/repo", ScanOptions{})
 
 	if result.Error == "" {
 		t.Fatal("expected error for missing path")
@@ -143,7 +143,7 @@ func TestScanRepoEmptyGitRepo(t *testing.T) {
 	dir := t.TempDir()
 	gitInit(t, dir)
 
-	result := ScanRepo(dir)
+	result := ScanRepo(dir, ScanOptions{})
 	if result.Error == "" {
 		t.Fatal("expected error for empty repo with no commits")
 	}
@@ -151,7 +151,7 @@ func TestScanRepoEmptyGitRepo(t *testing.T) {
 
 func TestScanRepoNonVTagIgnored(t *testing.T) {
 	dir := makeRepoWithCommitAndTag(t, "release-1.0")
-	result := ScanRepo(dir)
+	result := ScanRepo(dir, ScanOptions{})
 
 	if result.Error != "" {
 		t.Fatalf("unexpected error: %s", result.Error)
@@ -166,7 +166,7 @@ func TestScanAllMultipleRepos(t *testing.T) {
 	repo2 := makeRepoWithCommitAndTag(t, "v2.0.0")
 	missing := "/no/such/path"
 
-	results := ScanAll([]string{repo1, repo2, missing})
+	results := ScanAll([]string{repo1, repo2, missing}, ScanOptions{})
 	if len(results) != 3 {
 		t.Fatalf("expected 3 results, got %d", len(results))
 	}
@@ -184,5 +184,56 @@ func TestScanAllMultipleRepos(t *testing.T) {
 	}
 	if results[2].Error == "" {
 		t.Error("missing path should have error")
+	}
+}
+
+func TestDiscoverReposExpandsDirectory(t *testing.T) {
+	parent := t.TempDir()
+	repo1 := filepath.Join(parent, "repo1")
+	repo2 := filepath.Join(parent, "repo2")
+	os.MkdirAll(repo1, 0o755)
+	os.MkdirAll(repo2, 0o755)
+	gitInit(t, repo1)
+	writeFile(t, repo1, "f.txt", "1")
+	gitCommit(t, repo1, "init")
+	gitInit(t, repo2)
+	writeFile(t, repo2, "f.txt", "2")
+	gitCommit(t, repo2, "init")
+
+	repos := ResolveRepoPaths([]string{parent})
+	if len(repos) != 2 {
+		t.Fatalf("expected 2 repos, got %d: %v", len(repos), repos)
+	}
+}
+
+func TestDiscoverReposSingleRepo(t *testing.T) {
+	repo := makeRepoWithCommit(t)
+	repos := ResolveRepoPaths([]string{repo})
+	if len(repos) != 1 || repos[0] != repo {
+		t.Fatalf("expected [%s], got %v", repo, repos)
+	}
+}
+
+func TestScanRepoAuthorFilter(t *testing.T) {
+	dir := makeRepoWithCommit(t)
+	result := ScanRepo(dir, ScanOptions{Author: "Test"})
+	if result.Error != "" {
+		t.Fatalf("unexpected error with matching author: %s", result.Error)
+	}
+
+	result = ScanRepo(dir, ScanOptions{Author: "Nobody"})
+	if result.LastCommitDate != nil {
+		t.Error("expected nil LastCommitDate for non-matching author filter")
+	}
+}
+
+func TestScanRepoCollectsAuthors(t *testing.T) {
+	dir := makeRepoWithCommit(t)
+	result := ScanRepo(dir, ScanOptions{})
+	if result.Error != "" {
+		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	if len(result.Authors) == 0 {
+		t.Error("expected non-empty authors list")
 	}
 }
