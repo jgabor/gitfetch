@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
+	gitscanner "github.com/jgabor/gitfetch/internal/git"
 )
 
 func TestNewModel(t *testing.T) {
@@ -66,6 +69,80 @@ func TestViewShowsStatus(t *testing.T) {
 	view := m.View()
 	if len(view) == 0 {
 		t.Error("view should not be empty")
+	}
+}
+
+func TestRefreshKeyTriggersScan(t *testing.T) {
+	cfg := &config.Config{Repos: []string{"/home/user/some-repo"}}
+	c := cache.New()
+	m := NewModel(cfg, "/cfg", c, "/cache/cache.json")
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	if cmd == nil {
+		t.Fatal("expected non-nil cmd after 'r' keypress")
+	}
+	um := updated.(model)
+	if !um.scanning {
+		t.Error("expected scanning state active after 'r' keypress")
+	}
+	if um.statusMsg != "scanning…" {
+		t.Errorf("status = %q, want %q", um.statusMsg, "scanning…")
+	}
+}
+
+func TestRefreshKeyNoopWhenNoRepos(t *testing.T) {
+	cfg := &config.Config{Repos: []string{}}
+	c := cache.New()
+	m := NewModel(cfg, "/cfg", c, "/cache/cache.json")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	um := updated.(model)
+	if um.scanning {
+		t.Error("scanning should not start when no repos are tracked")
+	}
+	if um.statusMsg == "scanning…" {
+		t.Error("status should not show scanning when no repos are tracked")
+	}
+}
+
+func TestRefreshKeyIgnoredWhileScanning(t *testing.T) {
+	cfg := &config.Config{Repos: []string{"/home/user/p"}}
+	c := cache.New()
+	m := NewModel(cfg, "/cfg", c, "/cache/cache.json")
+	m.scanning = true
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	if cmd != nil {
+		t.Error("expected nil cmd while already scanning (deduplicate)")
+	}
+}
+
+func TestScanDoneWritesCacheAndClearsScanning(t *testing.T) {
+	dir := t.TempDir()
+	cachePath := filepath.Join(dir, "cache.json")
+
+	cfg := &config.Config{Repos: []string{"/home/user/x"}}
+	c := cache.New()
+	m := NewModel(cfg, "/cfg", c, cachePath)
+	m.scanning = true
+
+	now := time.Now().UTC()
+	msg := scanDoneMsg{results: []gitscanner.ScanResult{{
+		RepoPath:       "/home/user/x",
+		LastCommitDate: &now,
+		ScannedAt:      now,
+	}}}
+	updated, _ := m.Update(msg)
+	um := updated.(model)
+	if um.scanning {
+		t.Error("scanning should be false after scanDoneMsg")
+	}
+	loaded, err := cache.Load(cachePath)
+	if err != nil {
+		t.Fatalf("cache not persisted: %v", err)
+	}
+	if _, ok := loaded.Repos["/home/user/x"]; !ok {
+		t.Error("scan result not written to cache on disk")
 	}
 }
 

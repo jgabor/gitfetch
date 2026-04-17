@@ -53,6 +53,7 @@ type model struct {
 	height      int
 	width       int
 	inputBuffer string
+	scanning    bool
 }
 
 var (
@@ -119,13 +120,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case modeDiscovering:
 			return handleDiscovering(m, msg)
 		default:
-			var cmd tea.Cmd
-			m.table, cmd = m.table.Update(msg)
-			handleNormalKeys(&m, msg)
+			var tableCmd tea.Cmd
+			m.table, tableCmd = m.table.Update(msg)
+			keyCmd := handleNormalKeys(&m, msg)
 			if m.quitting {
 				return m, tea.Quit
 			}
-			return m, cmd
+			return m, tea.Batch(tableCmd, keyCmd)
 		}
 	case scanDoneMsg:
 		return handleScanDone(m, msg)
@@ -133,12 +134,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func handleNormalKeys(m *model, msg tea.KeyMsg) {
+func handleNormalKeys(m *model, msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		m.quitting = true
 	case "r":
-		m.mode = modeNormal
+		if m.scanning || len(m.repos) == 0 {
+			return nil
+		}
+		m.scanning = true
+		m.statusMsg = "scanning…"
+		m.err = nil
+		return startScan(*m)
 	case "a":
 		m.mode = modeAdding
 		m.statusMsg = ""
@@ -146,6 +153,7 @@ func handleNormalKeys(m *model, msg tea.KeyMsg) {
 	case "d", "x":
 		removeRepo(m)
 	}
+	return nil
 }
 
 func handleAdding(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -284,6 +292,7 @@ func startScan(m model) tea.Cmd {
 }
 
 func handleScanDone(m model, msg scanDoneMsg) (tea.Model, tea.Cmd) {
+	m.scanning = false
 	for _, r := range msg.results {
 		m.c.Repos[r.RepoPath] = cache.RepoEntry{
 			LastCommitDate: r.LastCommitDate,
