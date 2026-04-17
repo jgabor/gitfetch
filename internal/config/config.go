@@ -19,11 +19,8 @@ type Config struct {
 }
 
 func Default() *Config {
-	home, _ := os.UserHomeDir()
 	return &Config{
-		Repos: []string{
-			filepath.Join(home, "projects"),
-		},
+		Repos: []string{},
 		Display: Display{
 			Color: "auto",
 			Width: 0,
@@ -73,6 +70,17 @@ func CachePath() (string, error) {
 	return filepath.Join(dir, "cache.json"), nil
 }
 
+func ExpandPath(p string) string {
+	if len(p) >= 2 && p[:2] == "~/" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return p
+		}
+		return filepath.Join(home, p[2:])
+	}
+	return p
+}
+
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -81,6 +89,9 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := toml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing config %s: %w", path, err)
+	}
+	for i, r := range cfg.Repos {
+		cfg.Repos[i] = ExpandPath(r)
 	}
 	return &cfg, nil
 }

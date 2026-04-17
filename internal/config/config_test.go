@@ -61,9 +61,6 @@ func TestLoadMissingFile(t *testing.T) {
 
 func TestDefaultReturnsSaneValues(t *testing.T) {
 	cfg := Default()
-	if len(cfg.Repos) == 0 {
-		t.Error("default config should have at least one repo path")
-	}
 	if cfg.Display.Color != "auto" {
 		t.Errorf("default color = %q, want auto", cfg.Display.Color)
 	}
@@ -80,12 +77,9 @@ func TestDefaultTOMLIsParseable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := Load(path)
+	_, err := Load(path)
 	if err != nil {
 		t.Fatalf("DefaultTOML() produced unparseable output: %v", err)
-	}
-	if len(cfg.Repos) == 0 {
-		t.Error("parsed default should have repos")
 	}
 }
 
@@ -184,6 +178,28 @@ func TestLoadOrCreateCreatesDefault(t *testing.T) {
 	}
 	if _, statErr := os.Stat(path); statErr != nil {
 		t.Errorf("config file not created at %s: %v", path, statErr)
+	}
+}
+
+func TestLoadExpandsTilde(t *testing.T) {
+	dir := t.TempDir()
+	home, _ := os.UserHomeDir()
+	content := `repos = ["~/git/project", "/absolute/path"]` + "\n"
+	path := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	expected := filepath.Join(home, "git/project")
+	if cfg.Repos[0] != expected {
+		t.Errorf("repos[0] = %q, want %q", cfg.Repos[0], expected)
+	}
+	if cfg.Repos[1] != "/absolute/path" {
+		t.Errorf("repos[1] = %q, want /absolute/path", cfg.Repos[1])
 	}
 }
 
