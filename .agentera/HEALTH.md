@@ -209,3 +209,71 @@ DOCS.md index shows all artifacts ■ current (2026-04-17). PLAN archived under 
 - **Plan-driven rhythm**: the Audit 2 remediation plan shipped as seven focused commits with paired docs commits — a clean template for how future inspektera → planera → realisera loops should look.
 
 The trajectory inverted cleanly from Audit 2's ⮋ to ⮉. Every critical and degraded finding resolved, coverage rebuilt above the pre-regression baseline, documentation synced. What remains is cosmetic cruft (`DaysUntilNext`, `filteredCache` wrapper, `k`/`j` help text, `stripANSI`) plus one open architectural question (`display → bubbles`) that is correctly parked for `/resonera`. Good shape for pivoting back to VISION-driven work.
+
+## Audit 4 · 2026-04-17
+
+**Dimensions assessed**: architecture, patterns, coupling, complexity, tests, deps, artifact freshness, security
+**Findings**: 0 critical, 0 warnings, 3 info
+**Overall trajectory**: ⮉ improving vs Audit 3 (all Audit 3 findings resolved, staticcheck fully clean on tui, coverage restored)
+**Grades**: Architecture [A] | Patterns [A] | Coupling [B] | Complexity [A-] | Tests [A-] | Deps [A] | Security [A] | Artifact freshness [A]
+
+### Patterns: A
+
+#### ⇢ `display.plainBar` takes an unused `tier` parameter (confidence: 85/100)
+- **Location**: `internal/display/display.go:28`
+- **Evidence**: `func plainBar(tier decay.Tier, progress float64) string` uses only `progress` for bar width; `tier` is never referenced. gopls `unusedparams` surfaced it after the Audit 3 display test-helper deletion re-scanned the package. Three existing callers (1 production + 2 tests) pass a real tier that's discarded.
+- **Impact**: cosmetic — unused parameter creates a false contract (callers think colour/tier affects the bar). No runtime cost.
+- **Suggested action**: drop the parameter, update the four call sites, or actually use `tier` if the bar should be tier-colour-aware (the `plainBar` name suggests it intentionally isn't).
+
+#### ⇢ `scanner.go` could use `strings.SplitSeq` for incremental ranging (confidence: 55/100)
+- **Location**: `internal/git/scanner.go:138, 156`
+- **Evidence**: `listAuthors` and `listRemotes` both use `for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n")`. gopls `stringsseq` hint suggests `strings.SplitSeq` (Go 1.24+) to avoid materialising the full slice. Go module targets 1.26.2, so the idiom is available.
+- **Impact**: micro-optimization at best; author/remote lists are small per repo. Mostly a consistency / modernization signal.
+- **Suggested action**: optional — apply only if the next Go-modernization sweep picks up scanner.go.
+
+### Complexity: A- (⮉ from B+)
+
+#### ⇢ `viewDiscovering` still the longest TUI function at 65 lines (confidence: 45/100)
+- **Location**: `internal/tui/tui.go:414-481`
+- **Evidence**: Audit 3 flagged `handleDiscovering` (now 57 lines) as the complexity-watch candidate; the deferral rationale held in HEALTH. `viewDiscovering` is the other long function — mostly linear rendering logic, nine `b.WriteString` calls. No branching complexity.
+- **Impact**: none urgent; rendering code is naturally verbose and stays cohesive. Noted for trend watch only.
+- **Suggested action**: none for now. If a future feature adds another mode-specific view, consider extracting a shared row-formatter.
+
+### Tests: A- (⮉ from B+)
+Coverage restored: decay 77.4% → **92.3%** (back near Audit 1 baseline of 92.6%). tui 58.4% → **58.6%** (slight improvement from Task 3 test retargeting). display, cache, config, git all stable. `go test ./...` green across all seven packages. Staticcheck completely silent on the full tree. The only untested area remains `cmd/gitfetch` at 0% (thin CLI wiring, acceptable).
+
+### Architecture: A
+leda graph unchanged: 13 nodes / 16 edges / 5 components. tui.go dropped from 497 → 486 lines after Task 6's idiom updates. Total Go LOC 3104 → 3058 (-46). Fan-in: cache (5), config (3), scanner (3). No cycles. `display → bubbles` coupling remains the one open question, deferred to `/resonera` per TODO.md.
+
+### Coupling: B
+Unchanged from Audit 3. Still waiting on the `display → bubbles` resonera deliberation.
+
+### Deps: A
+`go.mod` unchanged since Audit 3. No upgrades, no vulnerabilities known to this environment (govulncheck not installed). Pinning discipline intact.
+
+### Security: A
+Regex scan for credentials, private keys, dangerous calls: zero hits. `exec.Command` still uses fixed argv only. No change in security surface.
+
+> This is a lightweight surface scan. For comprehensive security analysis, use dedicated tools: semgrep, Snyk, govulncheck, or similar static analysis and vulnerability scanning tools appropriate to your stack.
+
+### Artifact freshness: A
+All state artifacts modified on 2026-04-17 alongside plan execution. PLAN.md archived to `.agentera/archive/PLAN-2026-04-17-audit3-remediation.md`. DOCS.md audit log current through Audit 3 remediation. PROGRESS.md has per-task entries for Tasks 1-2 and an aggregate entry for the plan-level finalization. TODO.md now lists only the two deliberately deferred items.
+
+### Trends vs Audit 3
+- **Improved**:
+  - Tests [B+→A-]: decay restored to 92.3%, tui microbump; staticcheck fully clean on tui.
+  - Patterns [A-→A]: `filteredCache` indirection, `discoverRepos`/`DiscoverRepos` collision, unused `stripANSI`, `k`/`j` help text typo, and the three TUI linter hints all resolved.
+  - Complexity [B+→A-]: `handleAdding` decomposition holds; no new complexity hotspots introduced. Net -46 LOC in the Go tree.
+- **Degraded**: none detected.
+- **New findings**: three gopls `info` items (unused `plainBar` tier param, `strings.SplitSeq` opportunities in scanner.go, viewDiscovering length watch). All were technically present before; LSP just surfaced them as surrounding code churned.
+- **Resolved**: `decay.DaysUntilNext` dead export, TUI `↓/k` typo, `tui.filteredCache` wrapper, unexported `discoverRepos` shim, `stripANSI` test helper, three pre-existing tui.go linter hints, handleDiscovering complexity watch (unchanged but explicitly deferred per TODO).
+
+### Patterns Observed
+- **Module structure**: unchanged — one `*.go` + one `*_test.go` per package. tui.go now 486 lines (down 11).
+- **Error handling**: uniform `fmt.Errorf("context: %w", err)`; `sanitizeGitError` preserved.
+- **Testing approach**: Update-driven `tea.KeyMsg` tests solid in tui; table-driven decay/display; integration-style `exec.Command` in scanner. Proportionality in range (≤2 tests per pure unit).
+- **Dependency patterns**: direct deps pinned, indirects free, no vendor dir.
+- **Shelling out**: scanner still exec's git only; no go-git planned.
+- **Plan-driven rhythm**: back-to-back remediation plans (Audit 2 → Audit 3) executed cleanly with one-commit-per-task discipline and consolidating Task 7 sweeps. This rhythm is now the template for future HEALTH-driven plans.
+
+The trajectory held: ⮉ continuous improvement across two consecutive plan cycles. Staticcheck is fully silent, tests green, architecture unchanged, and the TODO backlog has shrunk to only the two deliberate deferrals. The three new info findings are all LSP-surfaced modernization nudges — nothing a user would notice. Good posture for either `/resonera` on the display-coupling question or pivoting to VISION-driven feature work (configurable thresholds, cache reconciliation, smarter tag patterns).
