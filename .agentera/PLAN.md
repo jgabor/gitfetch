@@ -48,7 +48,7 @@ Tasks 1, 4, 5 touch disjoint files from Tasks 2, 3, 6 and are independent. Tasks
 
 ### Task 2: Correct TUI help text so `↓` pairs with `j`
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN the normal-mode help line emitted by `View()` WHEN rendered THEN the down-arrow `↓` is paired with the letter `j` (not `k`); the up-arrow `↑` remains paired with `k`
 ▸ GIVEN `go test ./internal/tui/` WHEN it runs THEN all tests pass

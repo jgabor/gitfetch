@@ -41,3 +41,4 @@
 
 ### Fixed
 - TUI `r` key now actually triggers a refresh: scans all tracked repos, shows a `scanning…` status, writes the cache on disk, and updates displayed rows
+- TUI help text now correctly pairs `↓` with `j` instead of `k` (vim-style navigation)

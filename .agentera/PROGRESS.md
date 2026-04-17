@@ -157,3 +157,13 @@
 **Verified**: `grep -rn DaysUntilNext --include='*.go' .` returns zero matches post-deletion (only `.agentera/HEALTH.md` + `PLAN.md` docs mentions remain, as expected) · `go test -cover ./internal/decay/` reports `coverage: 92.3% of statements` (≥92% target met, near Audit 1 baseline of 92.6%) · `go build ./...` OK · `go test ./...` all 7 packages PASS
 **Next**: PLAN Task 2 (TUI help text `↓/k` → `↓/j`), 3, 4, or 5 — all independent and unblocked
 **Context**: plan-driven Task 1 · scope: `internal/decay/decay.go` only (13 lines removed, no callers) · constraints: internal package + CLI-only per VISION, so no external-API concern · unknowns: none
+
+## Cycle · 2026-04-17 (PLAN audit3-remediation Task 2)
+
+**What**: corrected TUI normal-mode help text so `↓` pairs with `j` (not `k`); `↑/k` pair unchanged
+**Commit**: e3b7414 fix(tui): correct help text — ↓ pairs with j, not k
+**Inspiration**: none
+**Discovered**: the 4 pre-existing tui.go linter hints (slices.Contains at line 210, minmax at 365 and 434, QF1012 at 470) resurfaced via LSP after the edit — confirms Task 6's target sites
+**Verified**: help line in `View()` now reads `"↑/k up · ↓/j down · r refresh · a add · d/x remove · q quit"` (diff confirmed) · `go test ./internal/tui/` all tests pass · `go build ./...` clean · `go run ./cmd/gitfetch` prints the dashboard header cleanly (normal print path unaffected)
+**Next**: PLAN Task 3 (inline filteredCache), 4 (inline discoverRepos), or 5 (delete stripANSI) — all independent; Task 6 then depends on 2+3
+**Context**: plan-driven Task 2 · scope: `internal/tui/tui.go:403` only (1 byte changed) · constraints: Task 6 out of scope despite LSP surfacing its targets · unknowns: none
