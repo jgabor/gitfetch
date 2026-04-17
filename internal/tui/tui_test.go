@@ -291,7 +291,7 @@ func TestFilteredCacheMatches(t *testing.T) {
 	c := cache.New()
 	c.Repos["/a"] = cache.RepoEntry{}
 	c.Repos["/b"] = cache.RepoEntry{}
-	got := filteredCache([]string{"/a"}, c)
+	got := cache.FilterByRepos(c, []string{"/a"})
 	if len(got) != 1 {
 		t.Errorf("expected 1 entry, got %d", len(got))
 	}
@@ -304,9 +304,9 @@ func TestFilteredCacheExcludesUnconfigured(t *testing.T) {
 	c := cache.New()
 	c.Repos["/a"] = cache.RepoEntry{}
 	c.Repos["/rogue"] = cache.RepoEntry{}
-	got := filteredCache([]string{"/a"}, c)
+	got := cache.FilterByRepos(c, []string{"/a"})
 	if _, ok := got["/rogue"]; ok {
-		t.Error("/rogue should not appear; filteredCache must exclude unconfigured paths")
+		t.Error("/rogue should not appear; FilterByRepos must exclude unconfigured paths")
 	}
 }
 

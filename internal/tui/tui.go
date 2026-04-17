@@ -67,10 +67,6 @@ var (
 	uncheckStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
-func filteredCache(cfgRepos []string, c *cache.Cache) map[string]cache.RepoEntry {
-	return cache.FilterByRepos(c, cfgRepos)
-}
-
 func buildTableModel(repos map[string]cache.RepoEntry, height int) table.Model {
 	t, _ := display.NewTable(repos, height, true)
 	s := display.TableStyles()
@@ -82,7 +78,7 @@ func buildTableModel(repos map[string]cache.RepoEntry, height int) table.Model {
 }
 
 func (m *model) rebuildTable() {
-	fc := filteredCache(m.repos, m.c)
+	fc := cache.FilterByRepos(m.c, m.repos)
 	m.table = buildTableModel(fc, m.height-6)
 }
 
