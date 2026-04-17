@@ -213,21 +213,3 @@ func TestNewTableCreatesColumns(t *testing.T) {
 	}
 }
 
-func stripANSI(s string) string {
-	var result []byte
-	inEscape := false
-	for i := 0; i < len(s); i++ {
-		if s[i] == '\x1b' {
-			inEscape = true
-			continue
-		}
-		if inEscape {
-			if s[i] >= 'a' && s[i] <= 'z' || s[i] >= 'A' && s[i] <= 'Z' {
-				inEscape = false
-			}
-			continue
-		}
-		result = append(result, s[i])
-	}
-	return string(result)
-}
