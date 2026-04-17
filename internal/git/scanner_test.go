@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -227,13 +228,139 @@ func TestScanRepoAuthorFilter(t *testing.T) {
 	}
 }
 
-func TestScanRepoCollectsAuthors(t *testing.T) {
+func TestScanRepoCollectsAuthorsWhenFilterSet(t *testing.T) {
+	dir := makeRepoWithCommit(t)
+	result := ScanRepo(dir, ScanOptions{Author: "Test"})
+	if result.Error != "" {
+		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	if len(result.Authors) == 0 {
+		t.Error("expected non-empty authors list when author filter is set")
+	}
+}
+
+func TestScanRepoSkipsAuthorsWhenNoFilter(t *testing.T) {
 	dir := makeRepoWithCommit(t)
 	result := ScanRepo(dir, ScanOptions{})
 	if result.Error != "" {
 		t.Fatalf("unexpected error: %s", result.Error)
 	}
-	if len(result.Authors) == 0 {
-		t.Error("expected non-empty authors list")
+	if len(result.Authors) != 0 {
+		t.Errorf("expected no authors collected when filter empty (perf guard); got %v", result.Authors)
+	}
+}
+
+func TestScanRepoSkipsRemotesWhenNoFilter(t *testing.T) {
+	dir := makeRepoWithCommit(t)
+	result := ScanRepo(dir, ScanOptions{})
+	if result.Error != "" {
+		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	if len(result.Remotes) != 0 {
+		t.Errorf("expected no remotes collected when filter empty (perf guard); got %v", result.Remotes)
+	}
+}
+
+func TestDiscoverReposBareDirectory(t *testing.T) {
+	dir := t.TempDir()
+	repos, err := DiscoverRepos(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(repos) != 1 || repos[0] != dir {
+		t.Errorf("bare directory should return [dir] as fallback; got %v", repos)
+	}
+}
+
+func TestDiscoverReposMultipleNested(t *testing.T) {
+	parent := t.TempDir()
+	for _, name := range []string{"r1", "r2", "r3"} {
+		sub := filepath.Join(parent, name)
+		os.MkdirAll(sub, 0o755)
+		gitInit(t, sub)
+	}
+	repos, err := DiscoverRepos(parent)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(repos) != 3 {
+		t.Fatalf("expected 3 nested repos, got %d: %v", len(repos), repos)
+	}
+}
+
+func TestDiscoverReposSingleRepoDirect(t *testing.T) {
+	repo := makeRepoWithCommit(t)
+	repos, err := DiscoverRepos(repo)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(repos) != 1 || repos[0] != repo {
+		t.Errorf("single repo should return itself; got %v", repos)
+	}
+}
+
+func TestDiscoverReposUnreadableDirectoryReturnsError(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	parent := t.TempDir()
+	locked := filepath.Join(parent, "locked")
+	if err := os.Mkdir(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(locked, 0o755) })
+
+	_, err := DiscoverRepos(locked)
+	if err == nil {
+		t.Fatal("expected error for unreadable directory")
+	}
+	if !strings.Contains(err.Error(), "discover repos") {
+		t.Errorf("error missing context wrapping; got: %v", err)
+	}
+}
+
+func TestMatchFilterCaseInsensitive(t *testing.T) {
+	if !matchFilter([]string{"Alice Example"}, "alice") {
+		t.Error("lowercase query against Titlecase haystack should match")
+	}
+	if !matchFilter([]string{"alice"}, "ALICE") {
+		t.Error("uppercase query against lowercase haystack should match")
+	}
+	if !matchFilter([]string{"GitHub.com/owner"}, "github") {
+		t.Error("mixed-case substring should match")
+	}
+}
+
+func TestMatchFilterNoMatch(t *testing.T) {
+	if matchFilter([]string{"alice", "bob"}, "charlie") {
+		t.Error("unrelated query should not match")
+	}
+	if matchFilter(nil, "anything") {
+		t.Error("nil haystack should not match")
+	}
+	if matchFilter([]string{}, "anything") {
+		t.Error("empty haystack should not match")
+	}
+}
+
+func TestListRemotesErrorWrapped(t *testing.T) {
+	dir := t.TempDir()
+	_, err := listRemotes(dir)
+	if err == nil {
+		t.Fatal("expected error for non-git directory")
+	}
+	if !strings.Contains(err.Error(), "listing remotes") {
+		t.Errorf("error missing context wrapping; got: %v", err)
+	}
+}
+
+func TestListRemotesSucceedsOnGitRepo(t *testing.T) {
+	dir := makeRepoWithCommit(t)
+	remotes, err := listRemotes(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(remotes) != 0 {
+		t.Errorf("expected no remotes on fresh repo; got %v", remotes)
 	}
 }

@@ -32,20 +32,28 @@ func ScanRepo(repoPath string, opts ScanOptions) ScanResult {
 		ScannedAt: time.Now().UTC().Truncate(time.Second),
 	}
 
-	authors, err := listAuthors(repoPath)
-	if err != nil {
-		result.Error = err.Error()
-		return result
-	}
-	result.Authors = authors
-	if opts.Author != "" && !matchFilter(authors, opts.Author) {
-		return result
+	if opts.Author != "" {
+		authors, err := listAuthors(repoPath)
+		if err != nil {
+			result.Error = err.Error()
+			return result
+		}
+		result.Authors = authors
+		if !matchFilter(authors, opts.Author) {
+			return result
+		}
 	}
 
-	remotes, _ := listRemotes(repoPath)
-	result.Remotes = remotes
-	if opts.Remote != "" && !matchFilter(remotes, opts.Remote) {
-		return result
+	if opts.Remote != "" {
+		remotes, err := listRemotes(repoPath)
+		if err != nil {
+			result.Error = err.Error()
+			return result
+		}
+		result.Remotes = remotes
+		if !matchFilter(remotes, opts.Remote) {
+			return result
+		}
 	}
 
 	commitDate, err := lastCommitDate(repoPath)
@@ -91,17 +99,13 @@ func ResolveRepoPaths(paths []string) []string {
 	return resolved
 }
 
-func DiscoverRepos(path string) []string {
-	return discoverRepos(path)
-}
-
-func discoverRepos(path string) []string {
+func DiscoverRepos(path string) ([]string, error) {
 	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
-		return []string{path}
+		return []string{path}, nil
 	}
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		return []string{path}
+		return nil, fmt.Errorf("discover repos %s: %w", path, err)
 	}
 	var repos []string
 	for _, e := range entries {
@@ -114,6 +118,14 @@ func discoverRepos(path string) []string {
 		}
 	}
 	if len(repos) == 0 {
+		return []string{path}, nil
+	}
+	return repos, nil
+}
+
+func discoverRepos(path string) []string {
+	repos, err := DiscoverRepos(path)
+	if err != nil {
 		return []string{path}
 	}
 	return repos

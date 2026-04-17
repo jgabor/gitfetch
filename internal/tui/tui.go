@@ -162,7 +162,10 @@ func handleAdding(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		info, err := os.Stat(path)
 		if err == nil && info.IsDir() {
-			found := gitscanner.DiscoverRepos(path)
+			found, derr := gitscanner.DiscoverRepos(path)
+			if derr != nil {
+				found = []string{path}
+			}
 			if len(found) > 1 || (len(found) == 1 && found[0] != path) {
 				m.discovered = make([]discoveredRepo, len(found))
 				for i, p := range found {
