@@ -89,3 +89,16 @@ func TierProgress(days int) float64 {
 		return 1.0
 	}
 }
+
+func DaysUntilNext(days int) int {
+	switch {
+	case days < FreshLimit:
+		return FreshLimit - days
+	case days < StaleLimit:
+		return StaleLimit - days
+	case days < DecayedLimit:
+		return DecayedLimit - days
+	default:
+		return 0
+	}
+}

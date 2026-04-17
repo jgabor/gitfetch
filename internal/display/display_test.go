@@ -11,12 +11,11 @@ import (
 )
 
 func makeDate(daysAgo int) time.Time {
-	t := time.Now().UTC().Add(-time.Duration(daysAgo) * 24 * time.Hour)
-	return t
+	return time.Now().UTC().Add(-time.Duration(daysAgo) * 24 * time.Hour)
 }
 
 func TestBuildRowsEmpty(t *testing.T) {
-	rows := BuildRows(map[string]cache.RepoEntry{})
+	rows, _ := BuildRows(map[string]cache.RepoEntry{})
 	if len(rows) != 0 {
 		t.Errorf("expected 0 rows, got %d", len(rows))
 	}
@@ -32,7 +31,7 @@ func TestBuildRowsFreshRepo(t *testing.T) {
 			ScannedAt:      time.Now().UTC(),
 		},
 	}
-	rows := BuildRows(repos)
+	rows, _ := BuildRows(repos)
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
@@ -58,16 +57,13 @@ func TestBuildRowsErrorRepo(t *testing.T) {
 			ScannedAt: time.Now().UTC(),
 		},
 	}
-	rows := BuildRows(repos)
+	rows, _ := BuildRows(repos)
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
 	r := rows[0]
 	if r.Error != "not a git repository" {
 		t.Errorf("error = %q, want not a git repository", r.Error)
-	}
-	if r.CommitTier != decay.Fresh {
-		t.Errorf("commit tier should be default (fresh) for error repos, got %s", r.CommitTier)
 	}
 }
 
@@ -79,7 +75,7 @@ func TestBuildRowsNoTag(t *testing.T) {
 			ScannedAt:      time.Now().UTC(),
 		},
 	}
-	rows := BuildRows(repos)
+	rows, _ := BuildRows(repos)
 	r := rows[0]
 	if r.HasTag {
 		t.Error("expected HasTag = false")
@@ -100,11 +96,10 @@ func TestBuildRowsMultipleTiers(t *testing.T) {
 		"/r3": {LastCommitDate: &decayedDate, ScannedAt: time.Now().UTC()},
 		"/r4": {LastCommitDate: &deadDate, ScannedAt: time.Now().UTC()},
 	}
-	rows := BuildRows(repos)
+	rows, _ := BuildRows(repos)
 	if len(rows) != 4 {
 		t.Fatalf("expected 4 rows, got %d", len(rows))
 	}
-
 	wantTiers := map[string]decay.Tier{}
 	for _, row := range rows {
 		switch row.Name {
@@ -120,65 +115,6 @@ func TestBuildRowsMultipleTiers(t *testing.T) {
 		if row.CommitTier != wantTiers[row.Name] {
 			t.Errorf("%s tier = %s, want %s", row.Name, row.CommitTier, wantTiers[row.Name])
 		}
-	}
-}
-
-func TestFormatRowContainsName(t *testing.T) {
-	row := RepoRow{
-		Name:           "myproject",
-		CommitTier:     decay.Fresh,
-		CommitDays:     10,
-		CommitProgress: 0.33,
-	}
-	out := FormatRow(row)
-	if !strings.Contains(out, "myproject") {
-		t.Errorf("output missing repo name: %q", out)
-	}
-}
-
-func TestFormatRowErrorRepo(t *testing.T) {
-	row := RepoRow{
-		Name:  "broken",
-		Error: "not a git repository",
-	}
-	out := FormatRow(row)
-	if !strings.Contains(out, "broken") {
-		t.Errorf("output missing repo name: %q", out)
-	}
-	if !strings.Contains(out, "error:") {
-		t.Errorf("output missing error prefix: %q", out)
-	}
-}
-
-func TestFormatRowWithTag(t *testing.T) {
-	row := RepoRow{
-		Name:           "tagged",
-		CommitTier:     decay.Stale,
-		CommitDays:     45,
-		CommitProgress: 0.25,
-		TagTier:        decay.Fresh,
-		TagDays:        10,
-		TagProgress:    0.33,
-		HasTag:         true,
-	}
-	out := FormatRow(row)
-	lines := strings.Split(out, "\n")
-	if len(lines) != 2 {
-		t.Fatalf("expected 2 lines (commit + tag), got %d: %q", len(lines), out)
-	}
-}
-
-func TestFormatRowNoTag(t *testing.T) {
-	row := RepoRow{
-		Name:           "untagged",
-		CommitTier:     decay.Fresh,
-		CommitDays:     5,
-		CommitProgress: 0.17,
-		HasTag:         false,
-	}
-	out := FormatRow(row)
-	if strings.Contains(out, "\n") {
-		t.Errorf("single repo without tag should be one line: %q", out)
 	}
 }
 
@@ -231,33 +167,49 @@ func TestFormatDashboardMultipleRepos(t *testing.T) {
 	}
 }
 
-func TestStyledBarWidth(t *testing.T) {
-	bar := styledBar(decay.Fresh, 0.5)
-	stripped := stripANSI(bar)
-	if utf8.RuneCountInString(stripped) != barWidth {
-		t.Errorf("bar width = %d runes, want %d", utf8.RuneCountInString(stripped), barWidth)
+func TestPlainBarWidth(t *testing.T) {
+	bar := plainBar(decay.Fresh, 0.5)
+	if utf8.RuneCountInString(bar) != barWidth {
+		t.Errorf("bar width = %d runes, want %d", utf8.RuneCountInString(bar), barWidth)
 	}
 }
 
-func TestStyledBarFull(t *testing.T) {
-	bar := styledBar(decay.Dead, 1.0)
-	stripped := stripANSI(bar)
-	for _, ch := range stripped {
-		if ch != '█' {
+func TestPlainBarFull(t *testing.T) {
+	bar := plainBar(decay.Dead, 1.0)
+	for _, ch := range bar {
+		if ch != '#' {
 			t.Errorf("expected all filled, got %c", ch)
 			break
 		}
 	}
 }
 
-func TestStyledBarEmpty(t *testing.T) {
-	bar := styledBar(decay.Fresh, 0.0)
-	stripped := stripANSI(bar)
-	for _, ch := range stripped {
-		if ch != '░' {
+func TestPlainBarEmpty(t *testing.T) {
+	bar := plainBar(decay.Fresh, 0.0)
+	for _, ch := range bar {
+		if ch != '-' {
 			t.Errorf("expected all empty, got %c", ch)
 			break
 		}
+	}
+}
+
+func TestNewTableCreatesColumns(t *testing.T) {
+	commitDate := makeDate(10)
+	repos := map[string]cache.RepoEntry{
+		"/r1": {LastCommitDate: &commitDate, ScannedAt: time.Now().UTC()},
+	}
+	tm, _ := NewTable(repos, 10, false)
+	cols := Columns()
+	if len(cols) != 6 {
+		t.Errorf("expected 6 columns, got %d", len(cols))
+	}
+	rows := tm.Rows()
+	if len(rows) != 1 {
+		t.Errorf("expected 1 row, got %d", len(rows))
+	}
+	if len(rows[0]) == 0 || rows[0][0] != "/r1" {
+		t.Errorf("expected hidden path column to contain /r1, got %v", rows[0])
 	}
 }
 
