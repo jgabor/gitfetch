@@ -168,6 +168,66 @@ func TestCacheWithError(t *testing.T) {
 	}
 }
 
+func TestFilterByReposMatchesConfigured(t *testing.T) {
+	c := New()
+	now := time.Now().UTC()
+	c.Repos["/home/a"] = RepoEntry{ScannedAt: now}
+	c.Repos["/home/b"] = RepoEntry{ScannedAt: now}
+	c.Repos["/home/c"] = RepoEntry{ScannedAt: now}
+
+	got := FilterByRepos(c, []string{"/home/a", "/home/c"})
+	if len(got) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(got))
+	}
+	if _, ok := got["/home/a"]; !ok {
+		t.Error("missing /home/a")
+	}
+	if _, ok := got["/home/c"]; !ok {
+		t.Error("missing /home/c")
+	}
+	if _, ok := got["/home/b"]; ok {
+		t.Error("/home/b should be excluded")
+	}
+}
+
+func TestFilterByReposExcludesUnconfigured(t *testing.T) {
+	c := New()
+	c.Repos["/home/a"] = RepoEntry{}
+	c.Repos["/home/unlisted"] = RepoEntry{}
+
+	got := FilterByRepos(c, []string{"/home/a"})
+	if _, ok := got["/home/unlisted"]; ok {
+		t.Error("unconfigured path /home/unlisted must not appear in filtered map")
+	}
+}
+
+func TestFilterByReposEmptyRepoListReturnsEmpty(t *testing.T) {
+	c := New()
+	c.Repos["/home/a"] = RepoEntry{}
+
+	got := FilterByRepos(c, nil)
+	if len(got) != 0 {
+		t.Errorf("expected empty map for nil repos, got %d entries", len(got))
+	}
+	got = FilterByRepos(c, []string{})
+	if len(got) != 0 {
+		t.Errorf("expected empty map for empty slice, got %d entries", len(got))
+	}
+}
+
+func TestFilterByReposNonEmptyPopulatesForKnownInput(t *testing.T) {
+	c := New()
+	c.Repos["/x"] = RepoEntry{Error: "probe"}
+
+	got := FilterByRepos(c, []string{"/x"})
+	if len(got) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(got))
+	}
+	if got["/x"].Error != "probe" {
+		t.Errorf("entry payload not preserved; got %+v", got["/x"])
+	}
+}
+
 func TestCacheJSONFormat(t *testing.T) {
 	now := time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC)
 	c := New()

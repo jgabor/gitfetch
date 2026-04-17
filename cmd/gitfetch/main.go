@@ -32,18 +32,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("loading cache: %w", err)
 		}
 
-		repoSet := make(map[string]bool, len(cfg.Repos))
-		for _, r := range cfg.Repos {
-			repoSet[r] = true
-		}
-		filtered := make(map[string]cache.RepoEntry, len(cfg.Repos))
-		for path, entry := range c.Repos {
-			if repoSet[path] {
-				filtered[path] = entry
-			}
-		}
-
-		fmt.Print(display.FormatDashboard(filtered))
+		fmt.Print(display.FormatDashboard(cache.FilterByRepos(c, cfg.Repos)))
 		return nil
 	},
 }

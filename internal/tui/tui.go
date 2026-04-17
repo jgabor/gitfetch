@@ -67,17 +67,7 @@ var (
 )
 
 func filteredCache(cfgRepos []string, c *cache.Cache) map[string]cache.RepoEntry {
-	repoSet := make(map[string]bool, len(cfgRepos))
-	for _, r := range cfgRepos {
-		repoSet[r] = true
-	}
-	filtered := make(map[string]cache.RepoEntry, len(cfgRepos))
-	for path, entry := range c.Repos {
-		if repoSet[path] {
-			filtered[path] = entry
-		}
-	}
-	return filtered
+	return cache.FilterByRepos(c, cfgRepos)
 }
 
 func buildTableModel(repos map[string]cache.RepoEntry, height int) table.Model {

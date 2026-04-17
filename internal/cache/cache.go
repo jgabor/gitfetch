@@ -47,6 +47,23 @@ func Load(path string) (*Cache, error) {
 	return &c, nil
 }
 
+func FilterByRepos(c *Cache, repos []string) map[string]RepoEntry {
+	filtered := make(map[string]RepoEntry, len(repos))
+	if c == nil || len(repos) == 0 {
+		return filtered
+	}
+	set := make(map[string]bool, len(repos))
+	for _, r := range repos {
+		set[r] = true
+	}
+	for path, entry := range c.Repos {
+		if set[path] {
+			filtered[path] = entry
+		}
+	}
+	return filtered
+}
+
 func Save(path string, c *Cache) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
