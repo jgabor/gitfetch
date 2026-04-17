@@ -1,6 +1,6 @@
 # Plan: Audit 2 Remediation
 
-<!-- Level: full | Created: 2026-04-17 | Status: active -->
+<!-- Level: full | Created: 2026-04-17 | Completed: 2026-04-17 | Status: archived -->
 <!-- Reviewed: 2026-04-17 | Critic issues: 9 found, 8 addressed, 1 dismissed -->
 
 ## What
@@ -98,7 +98,7 @@ No new packages, no dependency direction changes, no framework additions. The di
 
 ### Task 7: Plan-level freshness checkpoint
 **Depends on**: Task 1, Task 2, Task 3, Task 4, Task 5, Task 6
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN the plan's completion WHEN `CHANGELOG.md` is inspected THEN Added/Changed/Fixed entries reflect every task in this plan
 ▸ GIVEN the plan's completion WHEN `.agentera/PROGRESS.md` is inspected THEN a cycle entry summarizes the plan's aggregate outcome at the plan level

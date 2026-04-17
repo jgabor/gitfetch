@@ -1,21 +1,27 @@
 # TODO
 
-Sourced from `.agentera/HEALTH.md` Audit 2 · 2026-04-17.
+Sourced from `.agentera/HEALTH.md` Audit 2 · 2026-04-17. Audit 2 remediation plan complete 2026-04-17 (see `.agentera/archive/PLAN-2026-04-17-audit2-remediation.md`).
 
 ## ⇶ Critical
 
-- [ ] TUI 'r' key no longer refreshes — wire `startScan` into `handleNormalKeys` (`internal/tui/tui.go:150`) and add an `Update` test that asserts a non-nil `tea.Cmd` is returned for `r`
+_(empty — Audit 2 critical finding resolved)_
 
 ## ⇉ Degraded
 
-- [ ] Guard `listAuthors` / `listRemotes` behind `opts.Author != ""` / `opts.Remote != ""` in `ScanRepo` (`internal/git/scanner.go:35-49`) — unconditional author history scan regresses cache-first sub-500ms principle
-- [ ] Add `Update`-driven tests for TUI: `handleAdding`, `handleDiscovering`, `handleScanDone`, `removeRepo`, `visibleRange`, `filteredCache` (coverage fell from 27.6% to 14.8% while `tui.go` tripled in size)
-- [ ] Deduplicate repo-filter loop between `cmd/gitfetch/main.go:35-44` and `internal/tui/tui.go:69-81` — extract a shared `FilterByRepos` helper
-- [ ] Add direct tests for `DiscoverRepos`, `matchFilter`, and `listRemotes` error path in `internal/git/scanner.go`
-- [ ] Sync `.agentera/PROGRESS.md` + `CHANGELOG.md` with the uncommitted TUI/scanner changes (788+/392- lines undocumented) — or run `/dokumentera`
+_(empty — all Audit 2 degraded findings resolved)_
 
 ## ⇢ Annoying
 
-- [ ] Remove redundant `decay.Tier.Label()` alias (`internal/decay/decay.go:37-39`); switch the one caller in `display.rowToTableRow` to `String()`
-- [ ] Extract `commitNewRepo` from `handleAdding` (`internal/tui/tui.go:161-224`) to isolate persistence/discovery from keystroke routing
-- [ ] Decide whether `internal/display` should stay bubbles-aware or split into pure-format + table-widget submodules (Coupling finding, Audit 2)
+- [ ] Decide whether `internal/display` should stay bubbles-aware or split into pure-format + table-widget submodules (Coupling finding, Audit 2 — deferred to `/resonera`)
+- [ ] Pre-existing linter hints in `internal/tui/tui.go`: simplify loop with `slices.Contains`, modernize `if` with `max`, replace `WriteString(fmt.Sprintf(...))` with `fmt.Fprintf` (surfaced during Audit 2 plan, out of scope)
+
+## Resolved
+
+- [x] TUI 'r' key refresh — fixed in 3d5fcec (Task 3)
+- [x] `ScanRepo` perf regression — fixed in 3e28bb5 (Task 2)
+- [x] TUI Update-driven tests — added across 3d5fcec, bd8e631, 44993d1 (Tasks 3, 5, 6); coverage now 58.4%
+- [x] Repo-filter loop DRY — fixed in 7d9159e via `cache.FilterByRepos` (Task 1)
+- [x] Scanner gap tests (`DiscoverRepos`, `matchFilter`, `listRemotes`) — added in 3e28bb5 (Task 2)
+- [x] PROGRESS.md / CHANGELOG.md sync — done across the plan's 6 docs commits
+- [x] `decay.Tier.Label()` alias — removed in 010c4d3 (Task 4)
+- [x] `commitNewRepo` extraction from `handleAdding` — done in bd8e631 (Task 5)

@@ -41,3 +41,4 @@ No versioning block: Go modules version via git tags; no tags exist yet.
 ## Audit log
 
 - **2026-04-17** — first-run survey. Established root-level doc layout, terse-technical style, no auto-generated docs. Synced CHANGELOG.md and PROGRESS.md after drift from uncommitted TUI/scanner feature work. README and CLAUDE.md deferred.
+- **2026-04-17** — Audit 2 remediation plan completed (7/7 tasks). Tasks 1-6 shipped feature commits; Task 7 = this checkpoint. CHANGELOG.md + PROGRESS.md + TODO.md all current. Active PLAN.md archived to `.agentera/archive/PLAN-2026-04-17-audit2-remediation.md`.

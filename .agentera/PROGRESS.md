@@ -137,3 +137,13 @@
 **Verified**: `go test -cover ./internal/tui/` reports **coverage: 58.4% of statements** (plan target ≥40%, baseline-before-plan 14.8%) · `go test ./...` all packages pass
 **Next**: PLAN Task 7 — plan-level freshness checkpoint (archive PLAN.md, final CHANGELOG/TODO sweep)
 **Context**: plan-driven Task 6 · scope: `internal/tui/tui_test.go` (+8 new tests) · constraint: Update-driven for behavioral surfaces per plan · unknown: none
+
+## Cycle · 2026-04-17 (PLAN audit2-remediation COMPLETE)
+
+**What**: shipped 7/7 Audit 2 Remediation tasks — critical `r` refresh fix, scanner perf guard, DRY cache filter, scanner gap tests, TUI decomposition + coverage rebuild (14.8% → 58.4%), decay alias removal, and this final checkpoint
+**Commits**: 7d9159e (Task 1 FilterByRepos) · 3e28bb5 (Task 2 scanner perf+gaps) · 3d5fcec (Task 3 r-key fix) · 010c4d3 (Task 4 decay.Label removal) · bd8e631 (Task 5 commitNewRepo) · 44993d1 (Task 6 coverage 58.4%) · plus 6 interleaved docs commits (af15900, 500b418, 5272ff3, 0cb5ce9, e706c7a, a7cc03e) and this finalization commit
+**Inspiration**: none — remediation was fully internal
+**Discovered**: pre-existing tui.go linter hints (`slices.Contains` for a loop, modern `max` for two ifs, `fmt.Fprintf` for a WriteString+Sprintf) and `unused startScan` were surfaced repeatedly during the plan but were out of scope; they're now parked in TODO.md Annoying for a future plan. The display→bubbles coupling decision is still deferred to `/resonera`.
+**Verified**: default `gitfetch` runs in 22ms against real 16-repo cache (VISION ≤500ms ✓) · `r` key end-to-end smoke (tea.KeyMsg → non-nil cmd → scanDoneMsg → cache.json written) · `go test -cover ./internal/tui/` reports 58.4% (plan target ≥40%) · `go test ./...` all packages pass · `go build ./...` clean
+**Next**: run `/inspektera` to generate Audit 3 and measure the trajectory vs Audit 2's ⮋ degrading signal, then `/resonera` the display-coupling decision, or pick up vision-driven work from VISION.md
+**Context**: plan-driven Task 7 (finalization) · scope: TODO.md (resolved sweep), DOCS.md (audit log), PROGRESS.md (this entry), PLAN.md (archive) · constraints preserved: no HEALTH.md modification, no code changes, deferred items retained · unknowns: none
