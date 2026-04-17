@@ -46,7 +46,7 @@ No new packages, no dependency direction changes, no framework additions. The di
 
 ### Task 2: Scanner perf guard + gap tests
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `ScanRepo` is invoked with `opts.Author == ""` WHEN scanning completes THEN `ScanResult.Authors` is nil or empty
 ▸ GIVEN `ScanRepo` is invoked with `opts.Remote == ""` WHEN scanning completes THEN `ScanResult.Remotes` is nil or empty

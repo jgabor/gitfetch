@@ -31,3 +31,5 @@
 ### Changed
 - Default config no longer seeds `~/projects`; new installs start with an empty repo list (opt in via `gitfetch tui` or `config.toml`)
 - `cache.FilterByRepos` centralizes the "filter cache by configured repos" logic; `cmd/gitfetch` and `internal/tui` now share a single source of truth
+- Scanner skips author and remote collection when no `--author`/`--remote` filter is set, restoring sub-500ms refresh on repos with long history
+- `DiscoverRepos` now returns `([]string, error)` so unreadable directories surface a wrapped error instead of a silent single-path fallback

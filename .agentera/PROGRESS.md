@@ -87,3 +87,13 @@
 **Verified**: `go build ./...` OK · `go test ./...` all packages pass (cache: 4 new tests added) · `go run ./cmd/gitfetch` renders same repo dashboard as before commit (16 tracked repos, filtered from cache correctly)
 **Next**: PLAN Task 2 — scanner perf guard + gap tests, or Task 3 — fix broken `r` refresh (both independent of Task 1)
 **Context**: plan-driven mode · scope limited to Task 1 acceptance criteria · unknowns: none · scope touched: `internal/cache`, `cmd/gitfetch/main.go`, `internal/tui/tui.go`, `internal/cache/cache_test.go`
+
+## Cycle · 2026-04-17 (PLAN Task 2)
+
+**What**: scanner perf guard + scanner gap tests; `DiscoverRepos` grew error return
+**Commit**: 3e28bb5 perf(scanner): gate author/remote collection on filters
+**Inspiration**: none
+**Discovered**: pre-existing tui.go linter hints (unused `startScan`, slices.Contains, minmax, QF1012) still present — covered by PLAN tasks 3/5/6
+**Verified**: `go build ./...` OK · `go test ./...` all packages pass (git package adds 9 new tests) · `go run ./cmd/gitfetch refresh` scans 16 repos cleanly · default `gitfetch` completes in 22ms (well under 500ms VISION target)
+**Next**: PLAN Task 3 (fix broken `r` refresh) or Task 4 (remove decay.Tier.Label alias); Task 3 is the critical Audit 2 finding
+**Context**: plan-driven Task 2 · scope: `internal/git/scanner.go`, `internal/git/scanner_test.go`, `internal/tui/tui.go` caller fix · unknowns: none · constraints preserved (cache-first, no scope creep into cache persistence)
