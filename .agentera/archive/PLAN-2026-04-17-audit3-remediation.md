@@ -55,7 +55,7 @@ Tasks 1, 4, 5 touch disjoint files from Tasks 2, 3, 6 and are independent. Tasks
 
 ### Task 3: Remove the `filteredCache` indirection in tui
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN the `internal/tui` package WHEN searched THEN no `filteredCache` function is defined
 ▸ GIVEN all prior callers of `filteredCache` (production + tests) WHEN inspected THEN each calls `cache.FilterByRepos` directly with the `*Cache` and `[]string` in the order `FilterByRepos` requires
@@ -64,7 +64,7 @@ Tasks 1, 4, 5 touch disjoint files from Tasks 2, 3, 6 and are independent. Tasks
 
 ### Task 4: Inline the unexported `discoverRepos` shim in scanner
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `internal/git/scanner.go` WHEN read THEN the unexported `discoverRepos` helper (the error-swallowing wrapper around `DiscoverRepos`) no longer exists; `ResolveRepoPaths` calls `DiscoverRepos` directly and falls back to `[]string{path}` on error inline
 ▸ GIVEN the exported `DiscoverRepos` WHEN inspected THEN its signature and behavior are unchanged
@@ -73,7 +73,7 @@ Tasks 1, 4, 5 touch disjoint files from Tasks 2, 3, 6 and are independent. Tasks
 
 ### Task 5: Delete unused `stripANSI` test helper
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `staticcheck ./internal/display/` WHEN it runs THEN there is no `U1000: func stripANSI is unused` report
 ▸ GIVEN `go test ./internal/display/` WHEN it runs THEN all tests pass
@@ -85,7 +85,7 @@ Apply three idiom updates in `internal/tui/tui.go`:
 (c) `fmt.Fprintf(&b, ...)` in place of `b.WriteString(fmt.Sprintf(...))` sites
 
 **Depends on**: Task 2, Task 3
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `staticcheck ./internal/tui/` WHEN it runs THEN none of the three pre-existing hints (slices.Contains-for-loop, minmax, WriteString+Sprintf) are reported; no new hints introduced
 ▸ GIVEN `go vet ./...` WHEN it runs THEN it reports no issues
@@ -94,7 +94,7 @@ Apply three idiom updates in `internal/tui/tui.go`:
 
 ### Task 7: Plan-level freshness checkpoint
 **Depends on**: Task 1, Task 2, Task 3, Task 4, Task 5, Task 6
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN CHANGELOG.md WHEN read THEN it has a dated entry summarizing the Audit 3 remediation (Tasks 1-6) with commit hashes
 ▸ GIVEN `.agentera/PROGRESS.md` WHEN read THEN it has a plan-level cycle entry (in addition to the per-task entries) referencing the six feature commits

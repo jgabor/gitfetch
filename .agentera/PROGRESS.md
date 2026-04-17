@@ -167,3 +167,13 @@
 **Verified**: help line in `View()` now reads `"↑/k up · ↓/j down · r refresh · a add · d/x remove · q quit"` (diff confirmed) · `go test ./internal/tui/` all tests pass · `go build ./...` clean · `go run ./cmd/gitfetch` prints the dashboard header cleanly (normal print path unaffected)
 **Next**: PLAN Task 3 (inline filteredCache), 4 (inline discoverRepos), or 5 (delete stripANSI) — all independent; Task 6 then depends on 2+3
 **Context**: plan-driven Task 2 · scope: `internal/tui/tui.go:403` only (1 byte changed) · constraints: Task 6 out of scope despite LSP surfacing its targets · unknowns: none
+
+## Cycle · 2026-04-17 (PLAN audit3-remediation COMPLETE)
+
+**What**: shipped 7/7 Audit 3 Remediation tasks — `decay.DaysUntilNext` dead-export removed (coverage 77.4% → 92.3%), TUI help text `↓/k` → `↓/j` fixed, `filteredCache` wrapper inlined, scanner `discoverRepos` shim inlined, `stripANSI` test helper deleted, tui.go modernized with `slices.Contains`/`max`/`fmt.Fprintf`, and this finalization sweep
+**Commits**: 67c39d9 (Task 1 decay.DaysUntilNext) · e3b7414 (Task 2 help text) · af13a62 (Task 3 filteredCache inline) · 5f49c30 (Task 4 discoverRepos inline) · 444abdc (Task 5 stripANSI delete) · c717b5a (Task 6 tui modernizations) · plus docs commits 68a09ed and 093b0d1 and this finalization commit
+**Inspiration**: none — remediation was fully internal
+**Discovered**: LSP surfaced 2 pre-existing `stringsseq` hints on scanner.go (lines 138, 156) and a `unusedparams` + 2 lint hints on display.go after Tasks 4 and 5 landed; none were in scope and all are parked for a future audit. No `handleDiscovering` growth — its deferral stands
+**Verified**: `go build ./...` clean · `go vet ./...` clean · `staticcheck ./internal/tui/` reports zero hints (all four pre-existing ones cleared by Tasks 2 and 6) · `go test ./...` all seven packages pass · `go test -cover ./internal/decay/` reports 92.3% (Audit 1 baseline 92.6%) · `go run ./cmd/gitfetch` renders the real 16-repo dashboard header cleanly (sub-500ms print path unchanged)
+**Next**: run `/inspektera` to generate Audit 4 and confirm trajectory, then `/resonera` the `display → bubbles` coupling question (the one remaining TODO Annoying architectural item), or pivot to VISION-driven work (configurable thresholds, smarter tag patterns, cache reconciliation)
+**Context**: plan-driven Task 7 (finalization) · scope: TODO.md (Audit 3 Resolved section), CHANGELOG.md (5 new Changed entries), PROGRESS.md (this entry), PLAN.md (statuses + archive), DOCS.md (audit log) · constraints: no HEALTH.md rewrite, no code changes, deferred items preserved · unknowns: none

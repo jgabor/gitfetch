@@ -38,6 +38,10 @@
 - Duplicate path entered in add-repo now keeps the user in add mode with a visible status so they can correct and retry
 - TUI test coverage rebuilt from 14.8% to 58.4% (visibleRange, filteredCache, removeRepo, handleDiscovering all now exercised via Update)
 - Removed unused exported `decay.DaysUntilNext`; decay package coverage restored to 92.3%
+- Inlined `tui.filteredCache` wrapper at both call sites (`rebuildTable` and tests use `cache.FilterByRepos` directly)
+- Inlined the unexported `discoverRepos` shim in `internal/git/scanner.go` into `ResolveRepoPaths`; removes the `DiscoverRepos`/`discoverRepos` case-only name collision
+- Dropped unused `stripANSI` test helper in `internal/display/display_test.go`
+- Modernized three tui.go idioms: `slices.Contains` for the duplicate-path check, built-in `max()` for two clamp patterns, `fmt.Fprintf` for a `WriteString(fmt.Sprintf(...))` site — clears the three TODO Annoying linter hints parked during the Audit 2 plan
 
 ### Fixed
 - TUI `r` key now actually triggers a refresh: scans all tracked repos, shows a `scanning…` status, writes the cache on disk, and updates displayed rows
