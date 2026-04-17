@@ -89,7 +89,11 @@ func ResolveRepoPaths(paths []string) []string {
 	var resolved []string
 	seen := make(map[string]bool)
 	for _, p := range paths {
-		for _, repo := range discoverRepos(p) {
+		repos, err := DiscoverRepos(p)
+		if err != nil {
+			repos = []string{p}
+		}
+		for _, repo := range repos {
 			if !seen[repo] {
 				seen[repo] = true
 				resolved = append(resolved, repo)
@@ -121,14 +125,6 @@ func DiscoverRepos(path string) ([]string, error) {
 		return []string{path}, nil
 	}
 	return repos, nil
-}
-
-func discoverRepos(path string) []string {
-	repos, err := DiscoverRepos(path)
-	if err != nil {
-		return []string{path}
-	}
-	return repos
 }
 
 func listAuthors(repoPath string) ([]string, error) {
