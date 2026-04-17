@@ -147,3 +147,13 @@
 **Verified**: default `gitfetch` runs in 22ms against real 16-repo cache (VISION ≤500ms ✓) · `r` key end-to-end smoke (tea.KeyMsg → non-nil cmd → scanDoneMsg → cache.json written) · `go test -cover ./internal/tui/` reports 58.4% (plan target ≥40%) · `go test ./...` all packages pass · `go build ./...` clean
 **Next**: run `/inspektera` to generate Audit 3 and measure the trajectory vs Audit 2's ⮋ degrading signal, then `/resonera` the display-coupling decision, or pick up vision-driven work from VISION.md
 **Context**: plan-driven Task 7 (finalization) · scope: TODO.md (resolved sweep), DOCS.md (audit log), PROGRESS.md (this entry), PLAN.md (archive) · constraints preserved: no HEALTH.md modification, no code changes, deferred items retained · unknowns: none
+
+## Cycle · 2026-04-17 (PLAN audit3-remediation Task 1)
+
+**What**: deleted unused exported `decay.DaysUntilNext` (Audit 3 warning); decay package coverage restored from 77.4% → 92.3%
+**Commit**: 67c39d9 refactor(decay): remove unused DaysUntilNext
+**Inspiration**: none
+**Discovered**: none
+**Verified**: `grep -rn DaysUntilNext --include='*.go' .` returns zero matches post-deletion (only `.agentera/HEALTH.md` + `PLAN.md` docs mentions remain, as expected) · `go test -cover ./internal/decay/` reports `coverage: 92.3% of statements` (≥92% target met, near Audit 1 baseline of 92.6%) · `go build ./...` OK · `go test ./...` all 7 packages PASS
+**Next**: PLAN Task 2 (TUI help text `↓/k` → `↓/j`), 3, 4, or 5 — all independent and unblocked
+**Context**: plan-driven Task 1 · scope: `internal/decay/decay.go` only (13 lines removed, no callers) · constraints: internal package + CLI-only per VISION, so no external-API concern · unknowns: none

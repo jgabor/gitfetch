@@ -37,6 +37,7 @@
 - TUI add-repo flow split: `handleAdding` is a pure keystroke router, `commitNewRepo` owns validation/persistence/discovery dispatch
 - Duplicate path entered in add-repo now keeps the user in add mode with a visible status so they can correct and retry
 - TUI test coverage rebuilt from 14.8% to 58.4% (visibleRange, filteredCache, removeRepo, handleDiscovering all now exercised via Update)
+- Removed unused exported `decay.DaysUntilNext`; decay package coverage restored to 92.3%
 
 ### Fixed
 - TUI `r` key now actually triggers a refresh: scans all tracked repos, shows a `scanning…` status, writes the cache on disk, and updates displayed rows
