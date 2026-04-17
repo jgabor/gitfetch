@@ -69,7 +69,7 @@ No new packages, no dependency direction changes, no framework additions. The di
 
 ### Task 4: Remove decay.Tier.Label() alias
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `internal/decay` WHEN inspected THEN `Tier.Label` is absent
 ▸ GIVEN `display.rowToTableRow` WHEN rendering THEN it uses `Tier.String()`

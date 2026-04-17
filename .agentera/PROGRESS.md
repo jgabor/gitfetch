@@ -107,3 +107,13 @@
 **Verified**: `go build ./...` OK · `go test ./...` all packages pass · smoke driver inside-module sends `tea.KeyMsg{r}`, observes non-nil cmd → scanDoneMsg → cache.json on disk gets the scanned repo entry (1 entry written for the tempdir repo)
 **Next**: PLAN Task 4 (remove decay.Tier.Label alias — tiny), or Task 5 (decompose handleAdding, depends on Task 3 ✓ + Task 4)
 **Context**: plan-driven Task 3 · scope: `internal/tui/tui.go` (handleNormalKeys, Update, handleScanDone, scanning field), `internal/tui/tui_test.go` (4 new Update-driven tests) · constraint preserved: no daemon, no network, scanning runs in goroutine-free tea.Cmd · unknown: none
+
+## Cycle · 2026-04-17 (PLAN Task 4)
+
+**What**: removed `decay.Tier.Label()` alias; display callers use `Tier.String()`; dropped the now-vacuous TestTierLabelMatchesString
+**Commit**: 010c4d3 refactor(decay): drop Tier.Label alias in favor of Tier.String
+**Inspiration**: none
+**Discovered**: none
+**Verified**: `go build ./...` OK · `go test ./...` decay + display packages pass (others cached) · `go run ./cmd/gitfetch` still renders tier strings ("fresh", etc.) in the Tier column
+**Next**: PLAN Task 5 (decompose handleAdding — now unblocked since Task 3 ✓ and Task 4 ✓), then Task 6 (TUI coverage)
+**Context**: plan-driven Task 4 · scope: `internal/decay/decay.go`, `internal/decay/decay_test.go`, `internal/display/display.go` · constraints: no behavior change to rendered output · unknowns: none
