@@ -57,3 +57,23 @@
 **Verified**: N/A: docs-only
 **Next**: plan complete, all tasks shipped
 **Context**: freshness checkpoint · verified CHANGELOG has Added entries for all tasks · verified PROGRESS has cycles 1-5 · created VISION.md per Decision 1
+
+## Cycle 7 · 2026-04-17
+
+**What**: post-plan feature sweep — `--author`/`--remote` filters on `refresh`, TUI table rewrite on bubbles/table, multi-repo discovery checklist when adding a directory path, `~/` expansion in loaded config, `LastTag` cached for display, default config no longer seeds `~/projects`
+**Commits**: fd8c011 fix(config): empty default repos, expand ~/ in loaded paths · d1f35dd feat: author/remote scan filters and tag name in cache · f5519bc feat(tui): table-based UI with multi-repo discovery dialog
+**Inspiration**: charmbracelet/bubbles/table for consistent row rendering shared across dashboard and TUI
+**Discovered**: the refactor landed as one uncommitted blob (788+/392-) between cycle 6 and the next audit; should have been shipped as incremental cycles
+**Verified**: `go build ./...` OK, `go vet ./...` OK, `go test ./...` PASS (all seven packages green)
+**Next**: Cycle 8 · audit + doc sync
+**Context**: promotes bubbles/bubbletea/lipgloss to direct deps · refresh now prunes cache entries for repos dropped from config · scanner collects authors/remotes but does not persist them (used only when filters are set — see HEALTH Audit 2 finding)
+
+## Cycle 8 · 2026-04-17
+
+**What**: inspektera Audit 2 + dokumentera first-run survey. Filed 9 findings to TODO.md (1 critical, 5 degraded, 3 annoying); established DOCS.md convention map; synced CHANGELOG.md and PROGRESS.md to reflect Cycle 7.
+**Commits**: a754d37 docs: add Audit 2 findings to HEALTH.md and file TODO.md · 41d7aa9 chore: archive completed 2026-04-15 plan · (this cycle's docs commit pending)
+**Inspiration**: none
+**Discovered**: `internal/tui/tui.go:150` 'r' key no longer refreshes — `startScan` is dead code. `ScanRepo` runs full `git log --format=%aN` on every refresh even when no filter is set.
+**Verified**: N/A: docs + audit
+**Next**: realisera cycle to address the critical TODO (broken `r`) and the scanner perf regression
+**Context**: TUI coverage fell 27.6% → 14.8% while `tui.go` tripled in size · DOCS.md established root-level doc layout with skill artifacts in `.agentera/` · README.md and CLAUDE.md flagged as □ missing for a later cycle

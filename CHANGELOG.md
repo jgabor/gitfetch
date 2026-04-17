@@ -20,3 +20,13 @@
 - Empty cache prints suggestion message directing user to `gitfetch refresh`
 - Bubbletea TUI (`gitfetch tui`) for interactive repo management with navigation, inline refresh, add/remove repos
 - Key bindings: j/k navigate, r refresh, a add repo, d/x remove repo, q quit
+- `gitfetch refresh --author <substring>` and `--remote <substring>` flags filter which tracked repos are rescanned
+- Scanner collects per-repo authors and remotes (used only for filtering; not persisted to cache)
+- TUI multi-repo discovery: adding a directory path opens a checklist of detected sub-repos with toggle-all, per-row space/enter selection, and Esc to cancel
+- Display layer rewritten on top of `bubbles/table` and shared between the non-interactive dashboard and the TUI
+- Tag name cached alongside tag date in `cache.RepoEntry.LastTag`; displayed as the "Version" column
+- Config loader expands a leading `~/` in repo paths so configs are portable across hosts
+- `refresh` prunes cache entries whose repo was removed from config
+
+### Changed
+- Default config no longer seeds `~/projects`; new installs start with an empty repo list (opt in via `gitfetch tui` or `config.toml`)
