@@ -400,7 +400,7 @@ func (m model) View() string {
 		b.WriteString(helpStyle.Render("Enter to confirm · Directories auto-discover repos · Esc to cancel"))
 		b.WriteString("\n")
 	} else {
-		b.WriteString(helpStyle.Render("↑/k up · ↓/k down · r refresh · a add · d/x remove · q quit"))
+		b.WriteString(helpStyle.Render("↑/k up · ↓/j down · r refresh · a add · d/x remove · q quit"))
 		b.WriteString("\n")
 	}
 
