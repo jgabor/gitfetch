@@ -259,3 +259,171 @@ func TestViewQuitting(t *testing.T) {
 		t.Errorf("quitting view should be empty, got %q", view)
 	}
 }
+
+func TestVisibleRangeBounds(t *testing.T) {
+	cases := []struct {
+		name             string
+		cursor           int
+		total            int
+		available        int
+		wantStart, wantEnd int
+	}{
+		{"zero total", 0, 0, 10, 0, 0},
+		{"zero available", 0, 5, 0, 0, 0},
+		{"single item", 0, 1, 10, 0, 1},
+		{"total equals available", 3, 5, 5, 0, 5},
+		{"cursor near start", 1, 20, 10, 0, 10},
+		{"cursor mid", 10, 20, 10, 5, 15},
+		{"cursor near end", 19, 20, 10, 10, 20},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			start, end := visibleRange(tc.cursor, tc.total, tc.available)
+			if start != tc.wantStart || end != tc.wantEnd {
+				t.Errorf("visibleRange(%d, %d, %d) = (%d,%d), want (%d,%d)",
+					tc.cursor, tc.total, tc.available, start, end, tc.wantStart, tc.wantEnd)
+			}
+		})
+	}
+}
+
+func TestFilteredCacheMatches(t *testing.T) {
+	c := cache.New()
+	c.Repos["/a"] = cache.RepoEntry{}
+	c.Repos["/b"] = cache.RepoEntry{}
+	got := filteredCache([]string{"/a"}, c)
+	if len(got) != 1 {
+		t.Errorf("expected 1 entry, got %d", len(got))
+	}
+	if _, ok := got["/a"]; !ok {
+		t.Error("expected /a present")
+	}
+}
+
+func TestFilteredCacheExcludesUnconfigured(t *testing.T) {
+	c := cache.New()
+	c.Repos["/a"] = cache.RepoEntry{}
+	c.Repos["/rogue"] = cache.RepoEntry{}
+	got := filteredCache([]string{"/a"}, c)
+	if _, ok := got["/rogue"]; ok {
+		t.Error("/rogue should not appear; filteredCache must exclude unconfigured paths")
+	}
+}
+
+func TestRemoveRepoDeletesSelected(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.toml")
+
+	cfg := &config.Config{Repos: []string{"/first", "/second"}}
+	c := cache.New()
+	now := time.Now().UTC()
+	c.Repos["/first"] = cache.RepoEntry{LastCommitDate: &now, ScannedAt: now}
+	c.Repos["/second"] = cache.RepoEntry{LastCommitDate: &now, ScannedAt: now}
+	m := NewModel(cfg, cfgPath, c, filepath.Join(dir, "cache.json"))
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	um := updated.(model)
+
+	if len(um.repos) != 1 {
+		t.Fatalf("repos len = %d, want 1 after remove", len(um.repos))
+	}
+	loaded, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("config not persisted: %v", err)
+	}
+	if len(loaded.Repos) != 1 {
+		t.Errorf("persisted repos len = %d, want 1", len(loaded.Repos))
+	}
+}
+
+func TestRemoveRepoNoopWhenNoRows(t *testing.T) {
+	cfg := &config.Config{Repos: []string{}}
+	c := cache.New()
+	m := NewModel(cfg, "/cfg", c, "/cache")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	um := updated.(model)
+	if len(um.repos) != 0 {
+		t.Errorf("repos should stay empty, got %v", um.repos)
+	}
+}
+
+func TestHandleDiscoveringToggleAndToggleAll(t *testing.T) {
+	cfg := &config.Config{Repos: []string{}}
+	c := cache.New()
+	m := NewModel(cfg, "/cfg", c, "/cache")
+	m.mode = modeDiscovering
+	m.discovered = []discoveredRepo{
+		{path: "/one", selected: true},
+		{path: "/two", selected: true},
+	}
+	m.discoverAllSelected = true
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	um := updated.(model)
+	if um.discovered[0].selected {
+		t.Error("space should toggle the cursor entry off")
+	}
+	if !um.discovered[1].selected {
+		t.Error("space must not affect non-cursor entries")
+	}
+
+	updated2, _ := um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	um2 := updated2.(model)
+	for i, d := range um2.discovered {
+		if d.selected {
+			t.Errorf("discovered[%d].selected = true; 'a' should toggle all off", i)
+		}
+	}
+}
+
+func TestHandleDiscoveringEnterCommits(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.toml")
+
+	cfg := &config.Config{Repos: []string{}}
+	c := cache.New()
+	m := NewModel(cfg, cfgPath, c, filepath.Join(dir, "cache.json"))
+	m.mode = modeDiscovering
+	m.discovered = []discoveredRepo{
+		{path: "/picked", selected: true},
+		{path: "/skipped", selected: false},
+	}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	um := updated.(model)
+
+	if um.mode != modeNormal {
+		t.Errorf("mode = %v, want modeNormal after enter commit", um.mode)
+	}
+	if len(um.repos) != 1 || um.repos[0] != "/picked" {
+		t.Errorf("repos = %v, want [/picked]", um.repos)
+	}
+	if um.discovered != nil {
+		t.Errorf("discovered should be cleared, got %v", um.discovered)
+	}
+	loaded, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("config not persisted: %v", err)
+	}
+	if len(loaded.Repos) != 1 || loaded.Repos[0] != "/picked" {
+		t.Errorf("persisted repos = %v, want [/picked]", loaded.Repos)
+	}
+}
+
+func TestHandleDiscoveringEscCancels(t *testing.T) {
+	cfg := &config.Config{Repos: []string{}}
+	c := cache.New()
+	m := NewModel(cfg, "/cfg", c, "/cache")
+	m.mode = modeDiscovering
+	m.discovered = []discoveredRepo{{path: "/x", selected: true}}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	um := updated.(model)
+	if um.mode != modeNormal {
+		t.Errorf("mode = %v, want modeNormal after esc", um.mode)
+	}
+	if len(um.repos) != 0 {
+		t.Errorf("repos should stay empty when discovery cancelled; got %v", um.repos)
+	}
+}
