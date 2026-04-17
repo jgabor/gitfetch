@@ -121,3 +121,91 @@ Package graph unchanged; no new packages. Dependency direction still clean: `cmd
 - **Shelling out**: scanner always exec's git; there is no go-git dependency and no plan to add one per VISION ("shell out to git, cache results, display tiers").
 
 A clean, well-structured first release. Architecture is textbook Go project layout with clear package boundaries and no circular dependencies. Error handling and naming are consistent throughout. Test coverage is strong for domain logic (decay, display, git, config, cache) but the TUI layer is undertested — the only actionable gap. The `inputBuffer` package-level var is a minor code smell worth fixing before the TUI grows more state. No critical findings; project is in excellent shape for its first iteration.
+
+## Audit 3 · 2026-04-17
+
+**Dimensions assessed**: architecture, patterns, coupling, complexity, tests, deps, artifact freshness, security
+**Findings**: 0 critical, 1 warning, 5 info
+**Overall trajectory**: ⮉ improving vs Audit 2 (all critical + degraded findings resolved; coverage rebuilt; docs synced)
+**Grades**: Architecture [A] | Patterns [A-] | Coupling [B] | Complexity [B+] | Tests [B+] | Deps [A] | Security [A] | Artifact freshness [A]
+
+### Tests: B+ (⮉ from C)
+
+#### ⇉ `decay.DaysUntilNext` is unused exported code with 0% coverage (confidence: 85/100)
+- **Location**: `internal/decay/decay.go:89-100`
+- **Evidence**: `go tool cover -func` reports `DaysUntilNext 0.0%`. `grep -r DaysUntilNext` finds only the definition — zero callers in `cmd`, `internal`, or tests. Decay package coverage has dropped from 92.6% (Audit 1) → 77.4% almost entirely because this exported function contributes statements without exercise.
+- **Impact**: Dead export. Either a feature waiting to be wired (progress bar remaining-days label?) or cruft. It also masks coverage of the rest of the package by dragging the aggregate down.
+- **Suggested action**: delete it, or wire it into `display.FormatDashboard` (the "age" column could plausibly show "fresh · 4d until stale" style text).
+
+### Patterns: A-
+
+#### ⇢ TUI help text binds `k` to both directions (confidence: 95/100)
+- **Location**: `internal/tui/tui.go:403`
+- **Evidence**: `b.WriteString(helpStyle.Render("↑/k up · ↓/k down · r refresh · a add · d/x remove · q quit"))`. The `↓/k` should be `↓/j`; the bubbles table default key map uses vim-style `j` for down, `k` for up.
+- **Impact**: Cosmetic but misleading — hitting `k` scrolls up, not down. Sticks out the moment a user actually presses `k`.
+- **Suggested action**: one-character fix, `↓/k` → `↓/j`. No test needed.
+
+#### ⇢ `tui.filteredCache` is a trivial wrapper of `cache.FilterByRepos` (confidence: 85/100)
+- **Location**: `internal/tui/tui.go:70-72`
+- **Evidence**: The function is now `return cache.FilterByRepos(c, cfgRepos)` — one line, same signature up to argument order. Only two in-package callers (`rebuildTable`) both hit it.
+- **Impact**: Dead indirection left over from the Task 1 extraction. Inlining it would remove three lines without losing clarity, and would remove a name that duplicates the canonical one now living in `cache`.
+- **Suggested action**: inline the two call sites against `cache.FilterByRepos`, delete the wrapper.
+
+#### ⇢ `DiscoverRepos` / `discoverRepos` pair is name-collision-adjacent (confidence: 60/100)
+- **Location**: `internal/git/scanner.go:102` (exported) and `:126` (unexported)
+- **Evidence**: Exported returns `([]string, error)`; unexported is a swallow-errors wrapper used by `ResolveRepoPaths`. Names differ only by case; an outside reader has to stare to notice.
+- **Impact**: Minor. If a future refactor adds a third helper, the naming will bite.
+- **Suggested action**: rename the unexported helper (e.g. `discoverOrSelf`) to describe its fall-back semantics.
+
+### Patterns: lint residue
+
+#### ⇢ `display_test.go:216 stripANSI` is unused (confidence: 90/100)
+- **Location**: `internal/display/display_test.go:216`
+- **Evidence**: `staticcheck ./...` reports `func stripANSI is unused (U1000)`. The ANSI-stripping assertion style noted in Audit 1 appears to have been replaced; the helper was left behind.
+- **Impact**: Test helper cruft. No behavior impact.
+- **Suggested action**: delete it, or re-wire it into whichever assertion dropped it.
+
+### Complexity: B+ (⮉ from B)
+
+#### ⇢ `handleDiscovering` is 57 lines, 6 branches, 3 config-save points (confidence: 55/100)
+- **Location**: `internal/tui/tui.go:229-286`
+- **Evidence**: After the Task 5 decomposition landed cleanly for `handleAdding`, `handleDiscovering` is now the fattest key handler. The `enter` branch in particular builds a `tracked` set, mutates `m.repos`, calls `config.Save`, and handles three outcomes inline.
+- **Impact**: Same shape that earned `handleAdding` a finding last audit. It hasn't tipped into "critical" yet but it's the next candidate if the mode picks up new keys.
+- **Suggested action**: extract `commitDiscoveredSelection(m) (model, error)` mirroring the Task 5 `commitNewRepo` extraction. Defer unless the mode grows further.
+
+### Architecture: A
+Package graph unchanged since Audit 2: leda reports 13 nodes / 16 edges / 5 components; fan-in led by `cache` (5), fan-out led by `tui` (7). No cycles. `display → bubbles/table` boundary shift is still the only open architectural question, deferred to `/resonera` per TODO.md.
+
+### Coupling: B
+Unchanged from Audit 2. The `display → bubbles` coupling is the open question. All other boundaries are narrow and one-directional.
+
+### Deps: A
+`go.mod` tidy. Direct deps (`bubbles 1.0.0`, `bubbletea 1.3.10`, `lipgloss 1.1.0`, `go-toml/v2 2.3.0`, `cobra 1.10.2`) all pinned, all recent. `govulncheck` not run (not installed in env), recommend running before any release.
+
+### Security: A
+Regex scan for credential patterns, private-key markers, `eval`/dynamic exec: zero hits. `exec.Command` uses fixed argv forms only (`git`, `-C`, `log`, `remote`, etc.) with no shell interpolation or user-controlled argv positions.
+
+> This is a lightweight surface scan. For comprehensive security analysis, use dedicated tools: semgrep, Snyk, govulncheck, or similar static analysis and vulnerability scanning tools appropriate to your stack.
+
+### Artifact freshness: A (⮉ from C)
+DOCS.md index shows all artifacts ■ current (2026-04-17). PLAN archived under `.agentera/archive/PLAN-2026-04-17-audit2-remediation.md`. PROGRESS.md has one entry per completed task plus a finalization cycle; CHANGELOG.md mirrors the same spread. Working tree is clean at `e0a20f2`.
+
+### Trends vs Audit 2
+- **Improved**:
+  - Tests [C→B+]: TUI coverage 14.8% → 58.4% (Task 6); scanner gaps closed (Task 2); cache coverage 78.3% → 84.8% via FilterByRepos tests.
+  - Complexity [B→B+]: `handleAdding` decomposed 63 → 21 lines with a `commitNewRepo` helper (Task 5).
+  - Artifact freshness [C→A]: PROGRESS/CHANGELOG/TODO all synced; PLAN archived.
+  - Patterns: `decay.Tier.Label()` alias removed (Task 4); `cache.FilterByRepos` DRY extraction (Task 1); scanner `ScanRepo` perf guard (Task 2) restores the sub-500ms VISION budget on unfiltered refresh.
+- **Degraded**: none detected at dimension level.
+- **New findings**: one warning (`DaysUntilNext` dead export, 0% coverage drags decay down) and five cosmetic `info` issues (help text `k`, dead `filteredCache` wrapper, `Discover`/`discover` pair, `stripANSI` unused, `handleDiscovering` hotspot-in-waiting).
+- **Resolved**: broken `r` key, dead `startScan`, duplicated filter loop, wasted author/remote scan, `decay.Tier.Label` alias, stale PROGRESS/CHANGELOG, TUI coverage regression, `handleAdding` complexity finding.
+
+### Patterns Observed
+- **Module structure**: unchanged — one `*.go` + one `*_test.go` per package. `tui.go` is stable at 497 lines (up only four from Audit 2 after decomposition absorbed the growth).
+- **Error handling**: uniform `fmt.Errorf("context: %w", err)`; `sanitizeGitError` remains the thoughtful exception for `exec.Command` output.
+- **Testing approach**: Update-driven `tea.KeyMsg` tests now established in tui; table-driven where thresholds exist; integration-style against real `exec.Command git` in scanner; snapshot-ish assertions in display.
+- **Dependency patterns**: pinned directs, free indirects, no vendor dir. bubbles now a direct dep alongside bubbletea/lipgloss.
+- **Shelling out**: scanner still exec's git exclusively; no go-git, no network.
+- **Plan-driven rhythm**: the Audit 2 remediation plan shipped as seven focused commits with paired docs commits — a clean template for how future inspektera → planera → realisera loops should look.
+
+The trajectory inverted cleanly from Audit 2's ⮋ to ⮉. Every critical and degraded finding resolved, coverage rebuilt above the pre-regression baseline, documentation synced. What remains is cosmetic cruft (`DaysUntilNext`, `filteredCache` wrapper, `k`/`j` help text, `stripANSI`) plus one open architectural question (`display → bubbles`) that is correctly parked for `/resonera`. Good shape for pivoting back to VISION-driven work.
