@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -203,11 +204,9 @@ func commitNewRepo(m model) model {
 		}
 	}
 
-	for _, existing := range m.repos {
-		if existing == path {
-			m.statusMsg = fmt.Sprintf("already tracked: %s", path)
-			return m
-		}
+	if slices.Contains(m.repos, path) {
+		m.statusMsg = fmt.Sprintf("already tracked: %s", path)
+		return m
 	}
 	m.repos = append(m.repos, path)
 	m.cfg.Repos = m.repos
@@ -357,10 +356,7 @@ func visibleRange(cursor, total, availableLines int) (start, end int) {
 	}
 	if end > total {
 		end = total
-		start = total - availableLines
-		if start < 0 {
-			start = 0
-		}
+		start = max(total-availableLines, 0)
 	}
 	return start, end
 }
@@ -426,10 +422,7 @@ func viewDiscovering(m model, b *strings.Builder) string {
 
 	total := len(m.discovered)
 	chromeLines := 5
-	available := m.height - chromeLines
-	if available < 3 {
-		available = 3
-	}
+	available := max(m.height-chromeLines, 3)
 
 	b.WriteString("\n")
 
@@ -463,7 +456,7 @@ func viewDiscovering(m model, b *strings.Builder) string {
 
 		b.WriteString(cursor)
 		b.WriteString(style.Render(fmt.Sprintf("%s ", check)))
-		b.WriteString(fmt.Sprintf("%-20s", name))
+		fmt.Fprintf(b, "%-20s", name)
 		b.WriteString(helpStyle.Render(fmt.Sprintf("  %s", pathStr)))
 		b.WriteString("\n")
 	}
