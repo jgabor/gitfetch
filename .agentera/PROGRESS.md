@@ -77,3 +77,13 @@
 **Verified**: N/A: docs + audit
 **Next**: realisera cycle to address the critical TODO (broken `r`) and the scanner perf regression
 **Context**: TUI coverage fell 27.6% → 14.8% while `tui.go` tripled in size · DOCS.md established root-level doc layout with skill artifacts in `.agentera/` · README.md and CLAUDE.md flagged as □ missing for a later cycle
+
+## Cycle · 2026-04-17 (PLAN Task 1)
+
+**What**: extracted `cache.FilterByRepos` helper; `cmd/gitfetch` and `internal/tui` now delegate to it (DRY cleanup from Audit 2)
+**Commit**: 7d9159e refactor(cache): extract FilterByRepos shared helper
+**Inspiration**: none
+**Discovered**: none new; pre-existing linter hints in tui.go (unused `startScan`, slices.Contains, minmax, QF1012) remain — all covered by later plan tasks
+**Verified**: `go build ./...` OK · `go test ./...` all packages pass (cache: 4 new tests added) · `go run ./cmd/gitfetch` renders same repo dashboard as before commit (16 tracked repos, filtered from cache correctly)
+**Next**: PLAN Task 2 — scanner perf guard + gap tests, or Task 3 — fix broken `r` refresh (both independent of Task 1)
+**Context**: plan-driven mode · scope limited to Task 1 acceptance criteria · unknowns: none · scope touched: `internal/cache`, `cmd/gitfetch/main.go`, `internal/tui/tui.go`, `internal/cache/cache_test.go`
