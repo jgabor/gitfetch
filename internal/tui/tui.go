@@ -159,53 +159,7 @@ func handleNormalKeys(m *model, msg tea.KeyMsg) tea.Cmd {
 func handleAdding(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		path := strings.TrimSpace(m.inputBuffer)
-		m.inputBuffer = ""
-		if path == "" {
-			m.mode = modeNormal
-			m.rebuildTable()
-			return m, nil
-		}
-		path = config.ExpandPath(path)
-
-		info, err := os.Stat(path)
-		if err == nil && info.IsDir() {
-			found, derr := gitscanner.DiscoverRepos(path)
-			if derr != nil {
-				found = []string{path}
-			}
-			if len(found) > 1 || (len(found) == 1 && found[0] != path) {
-				m.discovered = make([]discoveredRepo, len(found))
-				for i, p := range found {
-					m.discovered[i] = discoveredRepo{path: p, selected: true}
-				}
-				m.discoverCursor = 0
-				m.discoverAllSelected = true
-				m.mode = modeDiscovering
-				m.statusMsg = ""
-				return m, nil
-			}
-		}
-
-		for _, existing := range m.repos {
-			if existing == path {
-				m.mode = modeNormal
-				m.statusMsg = fmt.Sprintf("already tracked: %s", path)
-				m.rebuildTable()
-				return m, nil
-			}
-		}
-		m.repos = append(m.repos, path)
-		m.cfg.Repos = m.repos
-		if err := config.Save(m.cfgPath, m.cfg); err != nil {
-			m.err = err
-			m.mode = modeNormal
-			return m, nil
-		}
-		m.mode = modeNormal
-		m.statusMsg = fmt.Sprintf("added: %s", path)
-		m.rebuildTable()
-		return m, nil
+		return commitNewRepo(m), nil
 	case "esc":
 		m.mode = modeNormal
 		m.inputBuffer = ""
@@ -222,6 +176,54 @@ func handleAdding(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+}
+
+func commitNewRepo(m model) model {
+	path := strings.TrimSpace(m.inputBuffer)
+	m.inputBuffer = ""
+	if path == "" {
+		m.mode = modeNormal
+		m.rebuildTable()
+		return m
+	}
+	path = config.ExpandPath(path)
+
+	info, err := os.Stat(path)
+	if err == nil && info.IsDir() {
+		found, derr := gitscanner.DiscoverRepos(path)
+		if derr != nil {
+			found = []string{path}
+		}
+		if len(found) > 1 || (len(found) == 1 && found[0] != path) {
+			m.discovered = make([]discoveredRepo, len(found))
+			for i, p := range found {
+				m.discovered[i] = discoveredRepo{path: p, selected: true}
+			}
+			m.discoverCursor = 0
+			m.discoverAllSelected = true
+			m.mode = modeDiscovering
+			m.statusMsg = ""
+			return m
+		}
+	}
+
+	for _, existing := range m.repos {
+		if existing == path {
+			m.statusMsg = fmt.Sprintf("already tracked: %s", path)
+			return m
+		}
+	}
+	m.repos = append(m.repos, path)
+	m.cfg.Repos = m.repos
+	if err := config.Save(m.cfgPath, m.cfg); err != nil {
+		m.err = err
+		m.mode = modeNormal
+		return m
+	}
+	m.mode = modeNormal
+	m.statusMsg = fmt.Sprintf("added: %s", path)
+	m.rebuildTable()
+	return m
 }
 
 func handleDiscovering(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
