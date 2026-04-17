@@ -131,14 +131,6 @@ func TestTierColor(t *testing.T) {
 	}
 }
 
-func TestTierLabelMatchesString(t *testing.T) {
-	for _, tier := range []Tier{Fresh, Stale, Decayed, Dead} {
-		if tier.Label() != tier.String() {
-			t.Errorf("Label() = %q, String() = %q", tier.Label(), tier.String())
-		}
-	}
-}
-
 func TestAgeDaysZeroTime(t *testing.T) {
 	if days := AgeDays(time.Time{}); days != 0 {
 		t.Errorf("AgeDays(zero) = %d, want 0", days)

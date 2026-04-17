@@ -34,10 +34,6 @@ func (t Tier) String() string {
 	}
 }
 
-func (t Tier) Label() string {
-	return t.String()
-}
-
 func (t Tier) Color() string {
 	switch t {
 	case Fresh:

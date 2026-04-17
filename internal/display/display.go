@@ -139,7 +139,7 @@ func rowToTableRow(row RepoRow, fullPath string) table.Row {
 		fullPath,
 		truncatePlain(row.Name, colRepo),
 		truncatePlain(row.Tag, colVersion),
-		row.CommitTier.Label(),
+		row.CommitTier.String(),
 		bar,
 		fmt.Sprintf("%dd", row.CommitDays),
 	}
