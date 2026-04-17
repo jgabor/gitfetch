@@ -117,3 +117,13 @@
 **Verified**: `go build ./...` OK · `go test ./...` decay + display packages pass (others cached) · `go run ./cmd/gitfetch` still renders tier strings ("fresh", etc.) in the Tier column
 **Next**: PLAN Task 5 (decompose handleAdding — now unblocked since Task 3 ✓ and Task 4 ✓), then Task 6 (TUI coverage)
 **Context**: plan-driven Task 4 · scope: `internal/decay/decay.go`, `internal/decay/decay_test.go`, `internal/display/display.go` · constraints: no behavior change to rendered output · unknowns: none
+
+## Cycle · 2026-04-17 (PLAN Task 5)
+
+**What**: decomposed `handleAdding` (63→21 lines) into keystroke router + `commitNewRepo` helper; duplicate paths now stay in add-mode
+**Commit**: bd8e631 refactor(tui): extract commitNewRepo from handleAdding
+**Inspiration**: none
+**Discovered**: none; behavior upgrade (duplicate→stay-in-add-mode) was spec'd by the plan's acceptance criteria
+**Verified**: `go test ./...` all packages pass, 4 new commitNewRepo tests exercise valid-path/duplicate/empty/multi-repo-discovery scenarios directly against the helper · `go build ./...` clean
+**Next**: PLAN Task 6 (rebuild TUI coverage to ≥40%) — now unblocked; Tasks 1, 3, 5 all done
+**Context**: plan-driven Task 5 · scope: `internal/tui/tui.go` (extract helper), `internal/tui/tui_test.go` (4 tests) · constraints: preserved all non-duplicate semantics · unknowns: none

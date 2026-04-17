@@ -34,6 +34,8 @@
 - Scanner skips author and remote collection when no `--author`/`--remote` filter is set, restoring sub-500ms refresh on repos with long history
 - `DiscoverRepos` now returns `([]string, error)` so unreadable directories surface a wrapped error instead of a silent single-path fallback
 - Dropped the redundant `decay.Tier.Label()` alias; callers use `Tier.String()` directly
+- TUI add-repo flow split: `handleAdding` is a pure keystroke router, `commitNewRepo` owns validation/persistence/discovery dispatch
+- Duplicate path entered in add-repo now keeps the user in add mode with a visible status so they can correct and retry
 
 ### Fixed
 - TUI `r` key now actually triggers a refresh: scans all tracked repos, shows a `scanning…` status, writes the cache on disk, and updates displayed rows

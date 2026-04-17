@@ -78,7 +78,7 @@ No new packages, no dependency direction changes, no framework additions. The di
 
 ### Task 5: Extract commitNewRepo from handleAdding
 **Depends on**: Task 3, Task 4
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `handleAdding` WHEN inspected THEN it only routes keystrokes; persistence, path validation, and discovery dispatch live in a `commitNewRepo` helper
 ▸ GIVEN `commitNewRepo` WHEN called with a valid single-repo path THEN the config is saved and the TUI returns to `modeNormal` with the new repo tracked
