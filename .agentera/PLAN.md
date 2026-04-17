@@ -89,7 +89,7 @@ No new packages, no dependency direction changes, no framework additions. The di
 
 ### Task 6: Rebuild TUI coverage
 **Depends on**: Task 1, Task 3, Task 5
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN the TUI package WHEN `go test -cover ./internal/tui/` runs THEN coverage is ≥ 40% (baseline 14.8%)
 ▸ GIVEN Update-driven tests WHEN run THEN they cover `handleAdding` happy + error paths, `handleDiscovering` (toggle + commit), `handleScanDone`, `removeRepo`

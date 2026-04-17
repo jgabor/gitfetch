@@ -127,3 +127,13 @@
 **Verified**: `go test ./...` all packages pass, 4 new commitNewRepo tests exercise valid-path/duplicate/empty/multi-repo-discovery scenarios directly against the helper · `go build ./...` clean
 **Next**: PLAN Task 6 (rebuild TUI coverage to ≥40%) — now unblocked; Tasks 1, 3, 5 all done
 **Context**: plan-driven Task 5 · scope: `internal/tui/tui.go` (extract helper), `internal/tui/tui_test.go` (4 tests) · constraints: preserved all non-duplicate semantics · unknowns: none
+
+## Cycle · 2026-04-17 (PLAN Task 6)
+
+**What**: rebuilt TUI test coverage — visibleRange (table, 7 cases), filteredCache (pass+fail), removeRepo (pass+noop), handleDiscovering (space-toggle, a-toggle-all, enter-commit, esc-cancel)
+**Commit**: 44993d1 test(tui): rebuild coverage (35.4% → 58.4%)
+**Inspiration**: none
+**Discovered**: none
+**Verified**: `go test -cover ./internal/tui/` reports **coverage: 58.4% of statements** (plan target ≥40%, baseline-before-plan 14.8%) · `go test ./...` all packages pass
+**Next**: PLAN Task 7 — plan-level freshness checkpoint (archive PLAN.md, final CHANGELOG/TODO sweep)
+**Context**: plan-driven Task 6 · scope: `internal/tui/tui_test.go` (+8 new tests) · constraint: Update-driven for behavioral surfaces per plan · unknown: none
