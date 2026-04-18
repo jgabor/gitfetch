@@ -9,31 +9,41 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
+	ltable "github.com/charmbracelet/lipgloss/table"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/decay"
 )
 
 const (
-	colRepo    = 25
+	colRepoMin = 4
 	colVersion = 10
 	colTier    = 8
 	barWidth   = 15
 	colDecay   = barWidth
 	colAge     = 5
 
-	barFilled = "#"
-	barEmpty  = "-"
+	barFilled = "█"
+	barEmpty  = "░"
 )
 
-func plainBar(tier decay.Tier, progress float64) string {
-	filled := int(float64(barWidth) * progress)
-	if filled < 0 {
-		filled = 0
+func plainBar(pct float64) string {
+	if pct < 0 {
+		pct = 0
 	}
-	if filled > barWidth {
-		filled = barWidth
+	if pct > 1 {
+		pct = 1
 	}
+	filled := min(int(float64(barWidth)*pct+0.5), barWidth)
 	return strings.Repeat(barFilled, filled) + strings.Repeat(barEmpty, barWidth-filled)
+}
+
+func colorBar(tier decay.Tier, pct float64) string {
+	bar := plainBar(pct)
+	filled := min(int(float64(barWidth)*pct+0.5), barWidth)
+	filledStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(tier.Color()))
+	emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	return filledStyle.Render(bar[:len(barFilled)*filled]) +
+		emptyStyle.Render(bar[len(barFilled)*filled:])
 }
 
 func truncatePlain(s string, maxLen int) string {
@@ -44,6 +54,16 @@ func truncatePlain(s string, maxLen int) string {
 		return s[:maxLen-3] + "..."
 	}
 	return s[:maxLen]
+}
+
+func repoColumnWidth(rows []RepoRow) int {
+	w := colRepoMin
+	for _, r := range rows {
+		if n := lipgloss.Width(r.Name); n > w {
+			w = n
+		}
+	}
+	return w
 }
 
 type RepoRow struct {
@@ -60,46 +80,63 @@ type RepoRow struct {
 }
 
 func BuildRows(repos map[string]cache.RepoEntry) ([]RepoRow, []string) {
-	sortedPaths := make([]string, 0, len(repos))
-	for p := range repos {
-		sortedPaths = append(sortedPaths, p)
+	type rowPath struct {
+		row  RepoRow
+		path string
 	}
-	sort.Slice(sortedPaths, func(i, j int) bool {
-		return filepath.Base(sortedPaths[i]) < filepath.Base(sortedPaths[j])
-	})
 
-	rows := make([]RepoRow, 0, len(repos))
-	paths := make([]string, 0, len(repos))
-	for _, name := range sortedPaths {
-		entry := repos[name]
+	all := make([]rowPath, 0, len(repos))
+	for name, entry := range repos {
 		row := RepoRow{Name: filepath.Base(name), Tag: entry.LastTag}
 		if entry.Error != "" {
 			row.Error = entry.Error
-			rows = append(rows, row)
-			paths = append(paths, name)
-			continue
+		} else {
+			if entry.LastCommitDate != nil {
+				row.CommitDays = decay.AgeDays(*entry.LastCommitDate)
+				row.CommitTier = decay.ClassifyByDays(row.CommitDays)
+				row.CommitProgress = decay.TierProgress(row.CommitDays)
+			}
+			if entry.LastTagDate != nil {
+				row.TagDays = decay.AgeDays(*entry.LastTagDate)
+				row.TagTier = decay.ClassifyByDays(row.TagDays)
+				row.TagProgress = decay.TierProgress(row.TagDays)
+				row.HasTag = true
+			}
 		}
-		if entry.LastCommitDate != nil {
-			row.CommitDays = decay.AgeDays(*entry.LastCommitDate)
-			row.CommitTier = decay.ClassifyByDays(row.CommitDays)
-			row.CommitProgress = decay.TierProgress(row.CommitDays)
+		all = append(all, rowPath{row: row, path: name})
+	}
+
+	sort.Slice(all, func(i, j int) bool {
+		a, b := all[i].row, all[j].row
+		aErr, bErr := a.Error != "", b.Error != ""
+		if aErr != bErr {
+			return !aErr
 		}
-		if entry.LastTagDate != nil {
-			row.TagDays = decay.AgeDays(*entry.LastTagDate)
-			row.TagTier = decay.ClassifyByDays(row.TagDays)
-			row.TagProgress = decay.TierProgress(row.TagDays)
-			row.HasTag = true
+		if aErr && bErr {
+			return a.Name < b.Name
 		}
-		rows = append(rows, row)
-		paths = append(paths, name)
+		if a.CommitTier != b.CommitTier {
+			return a.CommitTier > b.CommitTier
+		}
+		if a.CommitDays != b.CommitDays {
+			return a.CommitDays > b.CommitDays
+		}
+		return a.Name < b.Name
+	})
+
+	rows := make([]RepoRow, len(all))
+	paths := make([]string, len(all))
+	for i, rp := range all {
+		rows[i] = rp.row
+		paths[i] = rp.path
 	}
 	return rows, paths
 }
 
-func Columns() []table.Column {
+func Columns(repoWidth int) []table.Column {
 	return []table.Column{
 		{Title: "", Width: 0},
-		{Title: "Repo", Width: colRepo},
+		{Title: "Repo", Width: repoWidth},
 		{Title: "Version", Width: colVersion},
 		{Title: "Tier", Width: colTier},
 		{Title: "Decay", Width: colDecay},
@@ -121,11 +158,11 @@ func TableStyles() table.Styles {
 	return s
 }
 
-func rowToTableRow(row RepoRow, fullPath string) table.Row {
+func rowToTableRow(row RepoRow, fullPath string, repoWidth int) table.Row {
 	if row.Error != "" {
 		return table.Row{
 			fullPath,
-			truncatePlain(row.Name, colRepo),
+			truncatePlain(row.Name, repoWidth),
 			"",
 			"error",
 			truncatePlain(row.Error, colDecay),
@@ -133,27 +170,26 @@ func rowToTableRow(row RepoRow, fullPath string) table.Row {
 		}
 	}
 
-	bar := plainBar(row.CommitTier, row.CommitProgress)
-
 	return table.Row{
 		fullPath,
-		truncatePlain(row.Name, colRepo),
+		truncatePlain(row.Name, repoWidth),
 		truncatePlain(row.Tag, colVersion),
 		row.CommitTier.String(),
-		bar,
+		plainBar(row.CommitProgress),
 		fmt.Sprintf("%dd", row.CommitDays),
 	}
 }
 
 func NewTable(repos map[string]cache.RepoEntry, height int, focused bool) (table.Model, []string) {
 	rows, paths := BuildRows(repos)
+	repoWidth := repoColumnWidth(rows)
 	tableRows := make([]table.Row, 0, len(rows))
 	for i, r := range rows {
-		tableRows = append(tableRows, rowToTableRow(r, paths[i]))
+		tableRows = append(tableRows, rowToTableRow(r, paths[i], repoWidth))
 	}
 
 	totalWidth := 0
-	cols := Columns()
+	cols := Columns(repoWidth)
 	for _, c := range cols {
 		totalWidth += c.Width
 		if c.Width > 0 {
@@ -182,32 +218,77 @@ func NewTable(repos map[string]cache.RepoEntry, height int, focused bool) (table
 	return t, paths
 }
 
-func FormatDashboard(repos map[string]cache.RepoEntry) string {
+func FormatDashboard(repos map[string]cache.RepoEntry, verbose bool) string {
 	var b strings.Builder
 
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	b.WriteString(headerStyle.Render("gitfetch -- repo decay tracker"))
-	b.WriteString("\n\n")
+	if verbose {
+		headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+		b.WriteString(headerStyle.Render("gitfetch -- repo decay tracker"))
+		b.WriteString("\n\n")
+	}
 
 	if len(repos) == 0 {
-		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("No repos tracked. Run `gitfetch refresh` to scan."))
-		b.WriteString("\n")
+		if verbose {
+			b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("No repos tracked. Run `gitfetch refresh` to scan."))
+			b.WriteString("\n")
+		}
 		return b.String()
 	}
 
-	t, _ := NewTable(repos, len(repos)+2, false)
-	styles := TableStyles()
-	styles.Selected = styles.Cell
-	t.SetStyles(styles)
-	b.WriteString(t.View())
+	rows, _ := BuildRows(repos)
+	headerCellStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Padding(0, 1)
+	cellStyle := lipgloss.NewStyle().Padding(0, 1)
 
+	tbl := ltable.New().
+		Border(lipgloss.NormalBorder()).
+		BorderTop(false).
+		BorderBottom(false).
+		BorderLeft(false).
+		BorderRight(false).
+		BorderColumn(false).
+		BorderRow(false).
+		BorderHeader(verbose).
+		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("240"))).
+		StyleFunc(func(row, _ int) lipgloss.Style {
+			if row == ltable.HeaderRow {
+				return headerCellStyle
+			}
+			return cellStyle
+		})
+
+	if verbose {
+		tbl.Headers("Repo", "Version", "Tier", "Decay", "Age")
+	}
+
+	for _, r := range rows {
+		if r.Error != "" {
+			tbl.Row(r.Name, "", lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("error"), r.Error, "")
+			continue
+		}
+		tier := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(r.CommitTier.Color())).
+			Render(r.CommitTier.String())
+		tbl.Row(
+			r.Name,
+			r.Tag,
+			tier,
+			colorBar(r.CommitTier, r.CommitProgress),
+			fmt.Sprintf("%dd", r.CommitDays),
+		)
+	}
+
+	b.WriteString(tbl.Render())
 	b.WriteString("\n")
-	fresh := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("# fresh")
-	stale := lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Render("# stale")
-	decayed := lipgloss.NewStyle().Foreground(lipgloss.Color("208")).Render("# decayed")
-	dead := lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("# dead")
-	b.WriteString(fmt.Sprintf("Legend: %s  %s  %s  %s", fresh, stale, decayed, dead))
-	b.WriteString("\n")
+
+	if verbose {
+		b.WriteString("\n")
+		swatch := func(t decay.Tier) string {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(t.Color())).Render("█ " + t.String())
+		}
+		fmt.Fprintf(&b, "Legend: %s  %s  %s  %s",
+			swatch(decay.Fresh), swatch(decay.Stale), swatch(decay.Decayed), swatch(decay.Dead))
+		b.WriteString("\n")
+	}
 
 	return b.String()
 }

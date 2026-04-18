@@ -1,5 +1,6 @@
 # Binaries
 /gitfetch
+/bin/
 *.exe
 
 # OS

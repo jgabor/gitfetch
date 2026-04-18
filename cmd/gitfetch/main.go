@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var verbose bool
+
 var rootCmd = &cobra.Command{
 	Use:   "gitfetch",
 	Short: "Repo decay tracker — neofetch for git repos",
@@ -32,7 +34,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("loading cache: %w", err)
 		}
 
-		fmt.Print(display.FormatDashboard(cache.FilterByRepos(c, cfg.Repos)))
+		fmt.Print(display.FormatDashboard(cache.FilterByRepos(c, cfg.Repos), verbose))
 		return nil
 	},
 }
@@ -100,7 +102,7 @@ var refreshCmd = &cobra.Command{
 		}
 
 		fmt.Printf("\nrefreshed %d repos: %d ok, %d failed\n", len(results), ok, fail)
-		fmt.Print(display.FormatDashboard(c.Repos))
+		fmt.Print(display.FormatDashboard(c.Repos, verbose))
 		return nil
 	},
 }
@@ -129,6 +131,7 @@ var tuiCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show app header, table headers, and legend")
 	refreshCmd.Flags().StringVar(&authorFilter, "author", "", "filter repos by author name (substring match)")
 	refreshCmd.Flags().StringVar(&remoteFilter, "remote", "", "filter repos by remote URL (substring match)")
 	rootCmd.AddCommand(refreshCmd)
