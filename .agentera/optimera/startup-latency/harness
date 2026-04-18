@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# gitfetch startup-latency harness
+#
+# Builds gitfetch exactly as production install does (via `mage build`, which
+# reads magefile.go for build flags and compression) and benchmarks the
+# default `gitfetch` invocation with hyperfine against the user's real config
+# and cache. Emits a single-line JSON object on stdout per the optimera
+# harness contract.
+#
+# Because the harness shells out to `mage build`, any change an experiment
+# makes to magefile.go (build flags, UPX toggle, linker options, strip mode)
+# is automatically reflected in the measured binary. This keeps measurement
+# aligned with what `mage install` actually ships.
+#
+# Env toggles (kept minimal; prefer changing magefile.go):
+#   GITFETCH_HARNESS_RUNS=N     hyperfine --runs (default 50)
+#   GITFETCH_HARNESS_WARMUP=N   hyperfine --warmup (default 3)
+#
+# Requires: go, mage, hyperfine. UPX is invoked by magefile.go when present.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+cd "$repo_root"
+
+# Build via mage so build flags and compression match `mage install` exactly.
+# Clean first so the build target always produces a fresh binary.
+mage clean >/dev/null 2>&1 || true
+mage build >/dev/null
+
+bin="$repo_root/bin/gitfetch"
+if [[ ! -x "$bin" ]]; then
+  echo "harness: expected binary at $bin after 'mage build'" >&2
+  exit 1
+fi
+
+# Detect compression variant by inspecting the binary.
+variant="uncompressed"
+if command -v file >/dev/null 2>&1; then
+  if file "$bin" | grep -q "no section header"; then
+    variant="upx-lzma"
+  fi
+fi
+
+size_bytes=$(stat -c '%s' "$bin")
+runs="${GITFETCH_HARNESS_RUNS:-50}"
+warmup="${GITFETCH_HARNESS_WARMUP:-3}"
+
+json_file="$(mktemp)"
+trap 'rm -f "$json_file"' EXIT
+
+hyperfine \
+  --warmup "$warmup" \
+  --runs "$runs" \
+  --export-json "$json_file" \
+  --shell=none \
+  "$bin" >/dev/null
+
+python3 - "$json_file" "$variant" "$size_bytes" "$runs" <<'PY'
+import json, sys
+path, variant, size_bytes, runs = sys.argv[1:]
+with open(path) as f:
+    data = json.load(f)
+r = data["results"][0]
+mean_ms = r["mean"] * 1000.0
+stddev_ms = r["stddev"] * 1000.0
+min_ms = r["min"] * 1000.0
+max_ms = r["max"] * 1000.0
+out = {
+    "metric": round(mean_ms, 3),
+    "direction": "lower",
+    "unit": "ms",
+    "detail": f"{variant} binary, {int(size_bytes):,} bytes, {runs} runs, stddev {stddev_ms:.3f} ms",
+    "breakdown": [
+        {"name": "mean_ms", "value": round(mean_ms, 3)},
+        {"name": "stddev_ms", "value": round(stddev_ms, 3)},
+        {"name": "min_ms", "value": round(min_ms, 3)},
+        {"name": "max_ms", "value": round(max_ms, 3)},
+        {"name": "size_bytes", "value": int(size_bytes)},
+    ],
+}
+print(json.dumps(out))
+PY
