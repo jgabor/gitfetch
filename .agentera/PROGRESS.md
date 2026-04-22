@@ -201,7 +201,7 @@
 ## Cycle · 2026-04-22 (PLAN display-split Task 3)
 
 **What**: refactored `internal/display/display.go` `FormatDashboard` to use `theme.GradientBar` for both commit and tag decay bars in a compact side-by-side single "Decay" column; added `TestFormatDashboardDualDecayBars` and `TestFormatDashboardSingleDecayBar` to verify bar glyph counts
-**Commit**: (pending)
+**Commit**: f3c9fdc
 **Inspiration**: none — plan-driven structural refactor
 **Discovered**: the acceptance criterion "`bubbles/table` does not appear in `go list` imports" is incompatible with the constraint "Do NOT move `NewTable`/`TableStyles` to `tui/` yet — that's Task 4." `NewTable`, `TableStyles`, `Columns`, and `rowToTableRow` all reference `bubbles/table` types and are called by `internal/tui/tui.go`. Removing the import would break compilation. This criterion can only be satisfied in Task 4 when those functions move to `tui/`.
 **Verified**: `go build ./...` clean · `go vet ./...` clean · `go test ./...` all eight packages pass · `go test ./internal/display/` pass (8 tests, including 2 new dual/single bar tests) · `go run ./cmd/gitfetch` renders real 16-repo dashboard with gradient bars; repos with tags show two bars side by side, repos without tags show one bar

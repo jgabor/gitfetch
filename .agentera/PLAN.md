@@ -55,7 +55,7 @@ Audit 2 flagged `display → bubbles` coupling: the print path imports `bubbles/
 **Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `FormatDashboard` WHEN called with repos having both commit and tag data THEN both bars appear side by side in a single "Decay" column
-▸ GIVEN `go list -f '{{.Imports}}' ./internal/display/` WHEN run THEN `bubbles/table` does not appear in imports
+▸ GIVEN `go list -f '{{.Imports}}' ./internal/display/` WHEN run after Task 4 THEN `bubbles/table` does not appear in imports
 ▸ GIVEN `go test ./internal/display/` WHEN run THEN test parity is maintained
 
 ### Task 4: Move TUI widget to `tui/`
