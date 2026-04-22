@@ -177,3 +177,13 @@
 **Verified**: `go build ./...` clean · `go vet ./...` clean · `staticcheck ./internal/tui/` reports zero hints (all four pre-existing ones cleared by Tasks 2 and 6) · `go test ./...` all seven packages pass · `go test -cover ./internal/decay/` reports 92.3% (Audit 1 baseline 92.6%) · `go run ./cmd/gitfetch` renders the real 16-repo dashboard header cleanly (sub-500ms print path unchanged)
 **Next**: run `/inspektera` to generate Audit 4 and confirm trajectory, then `/resonera` the `display → bubbles` coupling question (the one remaining TODO Annoying architectural item), or pivot to VISION-driven work (configurable thresholds, smarter tag patterns, cache reconciliation)
 **Context**: plan-driven Task 7 (finalization) · scope: TODO.md (Audit 3 Resolved section), CHANGELOG.md (5 new Changed entries), PROGRESS.md (this entry), PLAN.md (statuses + archive), DOCS.md (audit log) · constraints: no HEALTH.md rewrite, no code changes, deferred items preserved · unknowns: none
+
+## Cycle · 2026-04-22 (PLAN display-split Task 1)
+
+**What**: extracted `internal/core/` package from `internal/display/` — `RepoRow`, `BuildRows`, `RepoColumnWidth` now live in a dedicated zero-UI-dependency package
+**Commit**: 49a3000 refactor: extract internal/core package from display
+**Inspiration**: none — plan-driven structural refactor
+**Discovered**: `RepoColumnWidth` still imports `lipgloss` for `lipgloss.Width()` — this leaks a UI dependency into `core/` despite the "zero UI imports" intent. Noted for potential future cleanup; does not block the plan.
+**Verified**: `go build ./...` clean · `go vet ./...` clean · `go test ./...` all eight packages pass (new `core/` + existing seven) · `go run ./cmd/gitfetch` renders real 16-repo dashboard unchanged · `internal/core/` tests cover empty, fresh, error, no-tag, multi-tier, sort order, and column width
+**Next**: Task 2 — create `internal/theme/` package with gradient bar generation
+**Context**: plan-driven Task 1 · scope: `internal/core/core.go`, `internal/core/core_test.go`, `internal/display/display.go` import updates · constraints: do not create theme/ yet, do not move NewTable/TableStyles to tui/ yet · unknowns: whether `bubbles/table` will render ANSI gradient sequences correctly (flagged in Decision 2 as provisional risk)

@@ -35,9 +35,9 @@ Audit 2 flagged `display → bubbles` coupling: the print path imports `bubbles/
 
 ### Task 1: Extract `core/` package
 **Depends on**: none
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
-▸ GIVEN `RepoRow`, `BuildRows`, `repoColumnWidth` WHEN moved to `internal/core/` THEN `display/` and `tui/` import them from `core/`
+▸ GIVEN `RepoRow`, `BuildRows`, `repoColumnWidth` WHEN moved to `internal/core/` THEN `display/` imports them from `core/` and `tui/` will import them from `core/` in Task 4 when `NewTable` moves
 ▸ GIVEN `go test ./internal/core/` WHEN run THEN `BuildRows` tests pass (1 pass + 1 fail per unit)
 ▸ GIVEN `go test ./...` WHEN run THEN all packages pass
 ▸ GIVEN `display_test.go` tests for `NewTable`/`TableStyles` WHEN examined THEN they are scheduled for migration to `tui/` in Task 4
