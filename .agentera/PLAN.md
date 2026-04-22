@@ -52,7 +52,7 @@ Audit 2 flagged `display → bubbles` coupling: the print path imports `bubbles/
 
 ### Task 3: Refactor `display/` for print rendering
 **Depends on**: Task 2
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `FormatDashboard` WHEN called with repos having both commit and tag data THEN both bars appear side by side in a single "Decay" column
 ▸ GIVEN `go list -f '{{.Imports}}' ./internal/display/` WHEN run THEN `bubbles/table` does not appear in imports

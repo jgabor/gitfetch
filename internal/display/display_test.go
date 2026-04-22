@@ -122,6 +122,40 @@ func TestRenderBarEmpty(t *testing.T) {
 	}
 }
 
+func TestFormatDashboardDualDecayBars(t *testing.T) {
+	commitDate := makeDate(10)
+	tagDate := makeDate(5)
+	repos := map[string]cache.RepoEntry{
+		"/r1": {
+			LastCommitDate: &commitDate,
+			LastTagDate:    &tagDate,
+			ScannedAt:      time.Now().UTC(),
+		},
+	}
+	out := FormatDashboard(repos, false)
+	stripped := ansi.Strip(out)
+	barCount := strings.Count(stripped, "█") + strings.Count(stripped, "░")
+	if barCount != 30 {
+		t.Errorf("expected exactly 30 bar glyphs for dual decay bars, got %d", barCount)
+	}
+}
+
+func TestFormatDashboardSingleDecayBar(t *testing.T) {
+	commitDate := makeDate(10)
+	repos := map[string]cache.RepoEntry{
+		"/r1": {
+			LastCommitDate: &commitDate,
+			ScannedAt:      time.Now().UTC(),
+		},
+	}
+	out := FormatDashboard(repos, false)
+	stripped := ansi.Strip(out)
+	barCount := strings.Count(stripped, "█") + strings.Count(stripped, "░")
+	if barCount != 15 {
+		t.Errorf("expected exactly 15 bar glyphs for single decay bar, got %d", barCount)
+	}
+}
+
 func TestNewTableCreatesColumns(t *testing.T) {
 	commitDate := makeDate(10)
 	repos := map[string]cache.RepoEntry{

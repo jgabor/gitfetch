@@ -11,6 +11,7 @@ import (
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/core"
 	"github.com/jgabor/gitfetch/internal/decay"
+	"github.com/jgabor/gitfetch/internal/theme"
 )
 
 const (
@@ -190,11 +191,15 @@ func FormatDashboard(repos map[string]cache.RepoEntry, verbose bool) string {
 		tier := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(r.CommitTier.Color())).
 			Render(r.CommitTier.String())
+		decayCell := theme.GradientBar(r.CommitTier, r.CommitProgress)
+		if r.HasTag {
+			decayCell = decayCell + " " + theme.GradientBar(r.TagTier, r.TagProgress)
+		}
 		tbl.Row(
 			r.Name,
 			r.Tag,
 			tier,
-			colorBar(r.CommitTier, r.CommitProgress),
+			decayCell,
 			fmt.Sprintf("%dd", r.CommitDays),
 		)
 	}
