@@ -1,53 +1,25 @@
 package theme
 
 import (
+	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/charmbracelet/lipgloss"
-	"github.com/jgabor/gitfetch/internal/decay"
-	"github.com/muesli/termenv"
 )
 
-func TestMain(m *testing.M) {
-	lipgloss.SetColorProfile(termenv.TrueColor)
-	m.Run()
-}
-
-func TestTierColor(t *testing.T) {
-	tests := []struct {
-		tier decay.Tier
-		want string
-	}{
-		{decay.Fresh, "2"},
-		{decay.Stale, "3"},
-		{decay.Decayed, "208"},
-		{decay.Dead, "1"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.tier.String(), func(t *testing.T) {
-			got := TierColor(tt.tier)
-			if string(got) != tt.want {
-				t.Errorf("TierColor(%s) = %q, want %q", tt.tier.String(), got, tt.want)
-			}
-		})
-	}
-}
-
-func TestGradientBar_EachTier(t *testing.T) {
+func TestGradientBar_VariousAges(t *testing.T) {
 	cases := []struct {
 		name string
-		tier decay.Tier
+		age  int
 	}{
-		{"fresh", decay.Fresh},
-		{"stale", decay.Stale},
-		{"decayed", decay.Decayed},
-		{"dead", decay.Dead},
+		{"fresh", 15},
+		{"stale", 60},
+		{"decayed", 135},
+		{"dead", 200},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name+"_pass", func(t *testing.T) {
-			got := GradientBar(c.tier, 0.5)
+			got := GradientBar(c.age, 0.5)
 			if got == "" {
 				t.Fatal("GradientBar returned empty string")
 			}
@@ -57,8 +29,8 @@ func TestGradientBar_EachTier(t *testing.T) {
 		})
 
 		t.Run(c.name+"_fail_negative_clamped", func(t *testing.T) {
-			got := GradientBar(c.tier, -0.5)
-			want := GradientBar(c.tier, 0)
+			got := GradientBar(c.age, -0.5)
+			want := GradientBar(c.age, 0)
 			if got != want {
 				t.Errorf("negative pct not clamped to 0")
 			}
@@ -68,43 +40,72 @@ func TestGradientBar_EachTier(t *testing.T) {
 
 func TestGradientBar_EdgeCases(t *testing.T) {
 	t.Run("zero_percent_no_filled", func(t *testing.T) {
-		got := GradientBar(decay.Fresh, 0)
+		got := GradientBar(10, 0)
 		if strings.Contains(got, BarFilled) {
 			t.Error("0% bar should not contain filled characters")
 		}
 	})
 
 	t.Run("hundred_percent_no_empty", func(t *testing.T) {
-		got := GradientBar(decay.Fresh, 1)
+		got := GradientBar(10, 1)
 		if strings.Contains(got, BarEmpty) {
 			t.Error("100% bar should not contain empty characters")
 		}
 	})
 
 	t.Run("negative_clamped", func(t *testing.T) {
-		got := GradientBar(decay.Stale, -1)
-		want := GradientBar(decay.Stale, 0)
+		got := GradientBar(60, -1)
+		want := GradientBar(60, 0)
 		if got != want {
 			t.Error("pct < 0 should clamp to 0")
 		}
 	})
 
 	t.Run("over_one_clamped", func(t *testing.T) {
-		got := GradientBar(decay.Decayed, 1.5)
-		want := GradientBar(decay.Decayed, 1)
+		got := GradientBar(120, 1.5)
+		want := GradientBar(120, 1)
 		if got != want {
 			t.Error("pct > 1 should clamp to 1")
 		}
 	})
 }
 
-func TestGradientBar_DifferentTiers(t *testing.T) {
-	fresh := GradientBar(decay.Fresh, 0.5)
-	stale := GradientBar(decay.Stale, 0.5)
-	decayed := GradientBar(decay.Decayed, 0.5)
-	dead := GradientBar(decay.Dead, 0.5)
+func TestGradientBar_DifferentAges(t *testing.T) {
+	fresh := GradientBar(15, 0.5)
+	stale := GradientBar(60, 0.5)
+	decayed := GradientBar(135, 0.5)
+	dead := GradientBar(200, 0.5)
 
 	if fresh == stale || stale == decayed || decayed == dead {
-		t.Error("different tiers should produce visually distinct bars")
+		t.Error("different ages should produce visually distinct bars")
+	}
+}
+
+func TestAgeColor(t *testing.T) {
+	cases := []struct {
+		age int
+	}{
+		{0},
+		{15},
+		{30},
+		{60},
+		{90},
+		{135},
+		{180},
+		{365},
+	}
+	for _, c := range cases {
+		got := fmt.Sprintf("%v", AgeColor(c.age))
+		if got == "" || got == "<nil>" {
+			t.Errorf("AgeColor(%d) returned empty or nil: %q", c.age, got)
+		}
+	}
+}
+
+func TestAgeColorNegative(t *testing.T) {
+	got := AgeColor(-5)
+	want := AgeColor(0)
+	if fmt.Sprintf("%v", got) != fmt.Sprintf("%v", want) {
+		t.Error("AgeColor(-5) should equal AgeColor(0)")
 	}
 }

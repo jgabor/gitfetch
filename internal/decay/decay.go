@@ -85,3 +85,14 @@ func TierProgress(days int) float64 {
 		return 1.0
 	}
 }
+
+// OverallProgress returns a 0.0–1.0 value representing how far
+// a repo has progressed through the entire decay spectrum.
+func OverallProgress(days int) float64 {
+	const maxDays = DecayedLimit
+	p := float64(days) / float64(maxDays)
+	if p > 1 {
+		p = 1
+	}
+	return p
+}

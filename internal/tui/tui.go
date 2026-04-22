@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/table"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
 	gitscanner "github.com/jgabor/gitfetch/internal/git"
@@ -109,7 +109,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.rebuildTable()
 		}
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch m.mode {
 		case modeAdding:
 			return handleAdding(m, msg)
@@ -130,8 +130,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func handleNormalKeys(m *model, msg tea.KeyMsg) tea.Cmd {
-	switch msg.String() {
+func handleNormalKeys(m *model, msg tea.KeyPressMsg) tea.Cmd {
+	switch msg.Text {
 	case "q", "ctrl+c":
 		m.quitting = true
 	case "r":
@@ -152,8 +152,8 @@ func handleNormalKeys(m *model, msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
-func handleAdding(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+func handleAdding(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.Text {
 	case "enter":
 		return commitNewRepo(m), nil
 	case "esc":
@@ -167,8 +167,8 @@ func handleAdding(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	default:
-		if len(msg.String()) == 1 {
-			m.inputBuffer += msg.String()
+		if len(msg.Text) == 1 {
+			m.inputBuffer += msg.Text
 		}
 		return m, nil
 	}
@@ -220,9 +220,9 @@ func commitNewRepo(m model) model {
 	return m
 }
 
-func handleDiscovering(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func handleDiscovering(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	total := len(m.discovered)
-	switch msg.String() {
+	switch msg.Text {
 	case "up", "k":
 		if m.discoverCursor > 0 {
 			m.discoverCursor--
@@ -360,9 +360,9 @@ func visibleRange(cursor, total, availableLines int) (start, end int) {
 	return start, end
 }
 
-func (m model) View() string {
+func (m model) View() tea.View {
 	if m.quitting {
-		return ""
+		return tea.NewView("")
 	}
 
 	var b strings.Builder
@@ -405,10 +405,12 @@ func (m model) View() string {
 		b.WriteString("\n")
 	}
 
-	return b.String()
+	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
 }
 
-func viewDiscovering(m model, b *strings.Builder) string {
+func viewDiscovering(m model, b *strings.Builder) tea.View {
 	selected := 0
 	for _, d := range m.discovered {
 		if d.selected {
@@ -474,12 +476,14 @@ func viewDiscovering(m model, b *strings.Builder) string {
 		b.WriteString("\n")
 	}
 
-	return b.String()
+	v := tea.NewView(b.String())
+	v.AltScreen = true
+	return v
 }
 
 func Run(cfg *config.Config, cfgPath string, c *cache.Cache, cachePath string) error {
 	m := NewModel(cfg, cfgPath, c, cachePath)
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m)
 	_, err := p.Run()
 	return err
 }

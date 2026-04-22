@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
 	gitscanner "github.com/jgabor/gitfetch/internal/git"
@@ -33,7 +33,7 @@ func TestViewEmpty(t *testing.T) {
 	c := cache.New()
 	m := NewModel(cfg, "/cfg", c, "/cache")
 	view := m.View()
-	if len(view) == 0 {
+	if len(view.Content) == 0 {
 		t.Error("view should not be empty")
 	}
 }
@@ -48,7 +48,7 @@ func TestViewWithRepos(t *testing.T) {
 	}
 	m := NewModel(cfg, "/cfg", c, "/cache")
 	view := m.View()
-	if len(view) == 0 {
+	if len(view.Content) == 0 {
 		t.Error("view should not be empty")
 	}
 }
@@ -58,7 +58,7 @@ func TestViewShowsHelp(t *testing.T) {
 	c := cache.New()
 	m := NewModel(cfg, "/cfg", c, "/cache")
 	view := m.View()
-	if len(view) == 0 {
+	if len(view.Content) == 0 {
 		t.Fatal("view is empty")
 	}
 }
@@ -69,7 +69,7 @@ func TestViewShowsStatus(t *testing.T) {
 	m := NewModel(cfg, "/cfg", c, "/cache")
 	m.statusMsg = "test status"
 	view := m.View()
-	if len(view) == 0 {
+	if len(view.Content) == 0 {
 		t.Error("view should not be empty")
 	}
 }
@@ -79,7 +79,7 @@ func TestRefreshKeyTriggersScan(t *testing.T) {
 	c := cache.New()
 	m := NewModel(cfg, "/cfg", c, "/cache/cache.json")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "r"})
 	if cmd == nil {
 		t.Fatal("expected non-nil cmd after 'r' keypress")
 	}
@@ -97,7 +97,7 @@ func TestRefreshKeyNoopWhenNoRepos(t *testing.T) {
 	c := cache.New()
 	m := NewModel(cfg, "/cfg", c, "/cache/cache.json")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	updated, _ := m.Update(tea.KeyPressMsg{Text: "r"})
 	um := updated.(model)
 	if um.scanning {
 		t.Error("scanning should not start when no repos are tracked")
@@ -113,7 +113,7 @@ func TestRefreshKeyIgnoredWhileScanning(t *testing.T) {
 	m := NewModel(cfg, "/cfg", c, "/cache/cache.json")
 	m.scanning = true
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	_, cmd := m.Update(tea.KeyPressMsg{Text: "r"})
 	if cmd != nil {
 		t.Error("expected nil cmd while already scanning (deduplicate)")
 	}
@@ -255,8 +255,8 @@ func TestViewQuitting(t *testing.T) {
 	m := NewModel(cfg, "/cfg", c, "/cache")
 	m.quitting = true
 	view := m.View()
-	if view != "" {
-		t.Errorf("quitting view should be empty, got %q", view)
+	if view.Content != "" {
+		t.Errorf("quitting view should be empty, got %q", view.Content)
 	}
 }
 
@@ -344,7 +344,7 @@ func TestRemoveRepoDeletesSelected(t *testing.T) {
 	c.Repos["/second"] = cache.RepoEntry{LastCommitDate: &now, ScannedAt: now}
 	m := NewModel(cfg, cfgPath, c, filepath.Join(dir, "cache.json"))
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	updated, _ := m.Update(tea.KeyPressMsg{Text: "d"})
 	um := updated.(model)
 
 	if len(um.repos) != 1 {
@@ -364,7 +364,7 @@ func TestRemoveRepoNoopWhenNoRows(t *testing.T) {
 	c := cache.New()
 	m := NewModel(cfg, "/cfg", c, "/cache")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, _ := m.Update(tea.KeyPressMsg{Text: "x"})
 	um := updated.(model)
 	if len(um.repos) != 0 {
 		t.Errorf("repos should stay empty, got %v", um.repos)
@@ -382,7 +382,7 @@ func TestHandleDiscoveringToggleAndToggleAll(t *testing.T) {
 	}
 	m.discoverAllSelected = true
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ := m.Update(tea.KeyPressMsg{Text: " "})
 	um := updated.(model)
 	if um.discovered[0].selected {
 		t.Error("space should toggle the cursor entry off")
@@ -391,7 +391,7 @@ func TestHandleDiscoveringToggleAndToggleAll(t *testing.T) {
 		t.Error("space must not affect non-cursor entries")
 	}
 
-	updated2, _ := um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated2, _ := um.Update(tea.KeyPressMsg{Text: "a"})
 	um2 := updated2.(model)
 	for i, d := range um2.discovered {
 		if d.selected {
@@ -413,7 +413,7 @@ func TestHandleDiscoveringEnterCommits(t *testing.T) {
 		{path: "/skipped", selected: false},
 	}
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Text: "enter"})
 	um := updated.(model)
 
 	if um.mode != modeNormal {
@@ -441,7 +441,7 @@ func TestHandleDiscoveringEscCancels(t *testing.T) {
 	m.mode = modeDiscovering
 	m.discovered = []discoveredRepo{{path: "/x", selected: true}}
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ := m.Update(tea.KeyPressMsg{Text: "esc"})
 	um := updated.(model)
 	if um.mode != modeNormal {
 		t.Errorf("mode = %v, want modeNormal after esc", um.mode)

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-	ltable "github.com/charmbracelet/lipgloss/table"
+	"charm.land/lipgloss/v2"
+	ltable "charm.land/lipgloss/v2/table"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/core"
 	"github.com/jgabor/gitfetch/internal/decay"
@@ -62,9 +62,9 @@ func FormatDashboard(repos map[string]cache.RepoEntry, verbose bool) string {
 		tier := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(r.CommitTier.Color())).
 			Render(r.CommitTier.String())
-		decayCell := theme.GradientBar(r.CommitTier, r.CommitProgress)
+		decayCell := theme.GradientBar(r.CommitDays, r.CommitProgress)
 		if r.HasTag {
-			decayCell = decayCell + " " + theme.GradientBar(r.TagTier, r.TagProgress)
+			decayCell = decayCell + " " + theme.GradientBar(r.TagDays, r.TagProgress)
 		}
 		tbl.Row(
 			r.Name,

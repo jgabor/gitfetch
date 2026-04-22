@@ -186,3 +186,28 @@ func TestTierProgressDead(t *testing.T) {
 		t.Errorf("TierProgress(365) = %f, want 1.0", p)
 	}
 }
+
+func TestOverallProgressZero(t *testing.T) {
+	p := OverallProgress(0)
+	if p != 0.0 {
+		t.Errorf("OverallProgress(0) = %f, want 0.0", p)
+	}
+}
+
+func TestOverallProgressHalf(t *testing.T) {
+	p := OverallProgress(90)
+	if p < 0.49 || p > 0.51 {
+		t.Errorf("OverallProgress(90) = %f, want ~0.5", p)
+	}
+}
+
+func TestOverallProgressMax(t *testing.T) {
+	p := OverallProgress(180)
+	if p != 1.0 {
+		t.Errorf("OverallProgress(180) = %f, want 1.0", p)
+	}
+	p = OverallProgress(365)
+	if p != 1.0 {
+		t.Errorf("OverallProgress(365) = %f, want 1.0", p)
+	}
+}

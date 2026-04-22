@@ -3,9 +3,9 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/table"
+	"charm.land/lipgloss/v2"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/core"
 	"github.com/jgabor/gitfetch/internal/theme"
@@ -72,7 +72,7 @@ func rowToTableRow(row core.RepoRow, fullPath string, repoWidth int) table.Row {
 		truncatePlain(row.Name, repoWidth),
 		truncatePlain(row.Tag, colVersion),
 		row.CommitTier.String(),
-		theme.GradientBar(row.CommitTier, row.CommitProgress),
+		theme.GradientBar(row.CommitDays, row.CommitProgress),
 		fmt.Sprintf("%dd", row.CommitDays),
 	}
 }

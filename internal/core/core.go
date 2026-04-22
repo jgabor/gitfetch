@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/decay"
 )
@@ -49,12 +49,12 @@ func BuildRows(repos map[string]cache.RepoEntry) ([]RepoRow, []string) {
 			if entry.LastCommitDate != nil {
 				row.CommitDays = decay.AgeDays(*entry.LastCommitDate)
 				row.CommitTier = decay.ClassifyByDays(row.CommitDays)
-				row.CommitProgress = decay.TierProgress(row.CommitDays)
+				row.CommitProgress = decay.OverallProgress(row.CommitDays)
 			}
 			if entry.LastTagDate != nil {
 				row.TagDays = decay.AgeDays(*entry.LastTagDate)
 				row.TagTier = decay.ClassifyByDays(row.TagDays)
-				row.TagProgress = decay.TierProgress(row.TagDays)
+				row.TagProgress = decay.OverallProgress(row.TagDays)
 				row.HasTag = true
 			}
 		}
@@ -69,9 +69,6 @@ func BuildRows(repos map[string]cache.RepoEntry) ([]RepoRow, []string) {
 		}
 		if aErr && bErr {
 			return a.Name < b.Name
-		}
-		if a.CommitTier != b.CommitTier {
-			return a.CommitTier > b.CommitTier
 		}
 		if a.CommitDays != b.CommitDays {
 			return a.CommitDays > b.CommitDays
