@@ -287,6 +287,29 @@ func TestVisibleRangeBounds(t *testing.T) {
 	}
 }
 
+func makeDate(daysAgo int) time.Time {
+	return time.Now().UTC().Add(-time.Duration(daysAgo) * 24 * time.Hour)
+}
+
+func TestNewTableCreatesColumns(t *testing.T) {
+	commitDate := makeDate(10)
+	repos := map[string]cache.RepoEntry{
+		"/r1": {LastCommitDate: &commitDate, ScannedAt: time.Now().UTC()},
+	}
+	tm, _ := NewTable(repos, 10, false)
+	cols := Columns(colRepoMin)
+	if len(cols) != 6 {
+		t.Errorf("expected 6 columns, got %d", len(cols))
+	}
+	rows := tm.Rows()
+	if len(rows) != 1 {
+		t.Errorf("expected 1 row, got %d", len(rows))
+	}
+	if len(rows[0]) == 0 || rows[0][0] != "/r1" {
+		t.Errorf("expected hidden path column to contain /r1, got %v", rows[0])
+	}
+}
+
 func TestFilteredCacheMatches(t *testing.T) {
 	c := cache.New()
 	c.Repos["/a"] = cache.RepoEntry{}

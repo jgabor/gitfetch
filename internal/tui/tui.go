@@ -12,7 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
-	"github.com/jgabor/gitfetch/internal/display"
 	gitscanner "github.com/jgabor/gitfetch/internal/git"
 )
 
@@ -69,8 +68,8 @@ var (
 )
 
 func buildTableModel(repos map[string]cache.RepoEntry, height int) table.Model {
-	t, _ := display.NewTable(repos, height, true)
-	s := display.TableStyles()
+	t, _ := NewTable(repos, height, true)
+	s := TableStyles()
 	s.Selected = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("15")).
 		Background(lipgloss.Color("62"))
