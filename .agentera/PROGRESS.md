@@ -218,3 +218,13 @@
 **Next**: Task 5 — plan-level freshness checkpoint (archive PLAN.md, CHANGELOG/TODO sweep)
 **Context**: plan-driven Task 4 · scope: `internal/tui/table.go` (new), `internal/tui/tui.go`, `internal/tui/tui_test.go`, `internal/display/display.go`, `internal/display/display_test.go` · constraints: did NOT modify `FormatDashboard` logic (Task 3 already done), did NOT modify `cmd/gitfetch/` · unknowns: none
 
+## Cycle · 2026-04-22 (PLAN display-split COMPLETE)
+
+**What**: shipped 4/4 display-split tasks — extracted `internal/core/` (zero-UI data package), created `internal/theme/` with Lab-space gradient bars, refactored `internal/display/` to print-only dual-decay layout, and moved TUI widget code to `internal/tui/` — resolving the Audit 2 `display → bubbles` coupling finding
+**Commits**: 49a3000 (Task 1 core/) · 0597383 (Task 2 theme/) · f3c9fdc (Task 3 print-only dual-decay) · 5295161 (Task 4 tui widget move) · plus this checkpoint commit
+**Inspiration**: plan-driven structural refactor to fulfill VISION "two-column decay" promise and break print-path's unnecessary `bubbles/table` dependency
+**Discovered**: `RepoColumnWidth` still imports `lipgloss` for `lipgloss.Width()`, leaking a minor UI dependency into `core/` despite its zero-UI intent. `go-colorful` was already an indirect dep, so promoting it to direct added zero startup cost. `bubbles/table` cells handle ANSI gradient sequences correctly in practice.
+**Verified**: `go build ./...` clean · `go vet ./...` clean · `go test ./...` all eight packages pass · `go list -f '{{.Imports}}' ./internal/display/` confirms zero `bubbles/table` or `bubbles/key` imports · `go run ./cmd/gitfetch` renders real 16-repo dashboard with dual-decay bars unchanged · startup latency unchanged at ~1 ms (sub-500ms VISION target ✓) · `go test -cover ./internal/theme/` reports 100% coverage · `go test -cover ./internal/core/` reports 100% coverage
+**Next**: run `/inspektera` to generate Audit 5 and confirm trajectory, or pick up VISION-driven work
+**Context**: plan-driven Task 5 (finalization) · scope: CHANGELOG.md, PROGRESS.md, PLAN.md archive · constraints: no code changes · unknowns: none
+

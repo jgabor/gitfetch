@@ -27,6 +27,9 @@
 - Tag name cached alongside tag date in `cache.RepoEntry.LastTag`; displayed as the "Version" column
 - Config loader expands a leading `~/` in repo paths so configs are portable across hosts
 - `refresh` prunes cache entries whose repo was removed from config
+- `internal/core/` package with `RepoRow`, `BuildRows`, and `RepoColumnWidth` for shared data between print and TUI
+- `internal/theme/` package with `GradientBar` and `TierColor` helpers using `lipgloss` + `go-colorful` for per-character Lab-space interpolation
+- Dual-decay layout in print dashboard — commit and tag decay bars rendered side by side in a single "Decay" column
 
 ### Changed
 - Default config no longer seeds `~/projects`; new installs start with an empty repo list (opt in via `gitfetch tui` or `config.toml`)
@@ -42,6 +45,8 @@
 - Inlined the unexported `discoverRepos` shim in `internal/git/scanner.go` into `ResolveRepoPaths`; removes the `DiscoverRepos`/`discoverRepos` case-only name collision
 - Dropped unused `stripANSI` test helper in `internal/display/display_test.go`
 - Modernized three tui.go idioms: `slices.Contains` for the duplicate-path check, built-in `max()` for two clamp patterns, `fmt.Fprintf` for a `WriteString(fmt.Sprintf(...))` site — clears the three TODO Annoying linter hints parked during the Audit 2 plan
+- `internal/display/` refactored to print-only — no longer imports `bubbles/table`; `FormatDashboard` uses `theme.GradientBar` for both bars
+- TUI widget functions (`NewTable`, `TableStyles`, `Columns`, `rowToTableRow`) moved from `internal/display/` to `internal/tui/`
 
 ### Fixed
 - TUI `r` key now actually triggers a refresh: scans all tracked repos, shows a `scanning…` status, writes the cache on disk, and updates displayed rows

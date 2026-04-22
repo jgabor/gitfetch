@@ -60,7 +60,7 @@ Audit 2 flagged `display → bubbles` coupling: the print path imports `bubbles/
 
 ### Task 4: Move TUI widget to `tui/`
 **Depends on**: Task 2
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `tui.NewTable` WHEN called THEN it builds a `bubbles/table.Model` using `core/` and `theme/`
 ▸ GIVEN `go test ./internal/tui/` WHEN run THEN TUI tests pass
@@ -69,7 +69,7 @@ Audit 2 flagged `display → bubbles` coupling: the print path imports `bubbles/
 
 ### Task 5: Plan-level freshness checkpoint
 **Depends on**: Task 3, Task 4
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN plan completion WHEN documented THEN CHANGELOG.md lists the dual-decay layout and package split
 ▸ GIVEN plan completion WHEN documented THEN PROGRESS.md captures the aggregate outcome
