@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
@@ -20,17 +19,6 @@ const (
 	colDecay   = barWidth
 	colAge     = 5
 )
-
-func plainBar(pct float64) string {
-	if pct < 0 {
-		pct = 0
-	}
-	if pct > 1 {
-		pct = 1
-	}
-	filled := min(int(float64(barWidth)*pct+0.5), barWidth)
-	return strings.Repeat(theme.BarFilled, filled) + strings.Repeat(theme.BarEmpty, barWidth-filled)
-}
 
 func truncatePlain(s string, maxLen int) string {
 	if len(s) <= maxLen {
