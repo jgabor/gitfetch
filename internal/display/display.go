@@ -2,8 +2,6 @@ package display
 
 import (
 	"fmt"
-	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -11,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	ltable "github.com/charmbracelet/lipgloss/table"
 	"github.com/jgabor/gitfetch/internal/cache"
+	"github.com/jgabor/gitfetch/internal/core"
 	"github.com/jgabor/gitfetch/internal/decay"
 )
 
@@ -56,83 +55,6 @@ func truncatePlain(s string, maxLen int) string {
 	return s[:maxLen]
 }
 
-func repoColumnWidth(rows []RepoRow) int {
-	w := colRepoMin
-	for _, r := range rows {
-		if n := lipgloss.Width(r.Name); n > w {
-			w = n
-		}
-	}
-	return w
-}
-
-type RepoRow struct {
-	Name           string
-	Tag            string
-	CommitTier     decay.Tier
-	CommitDays     int
-	CommitProgress float64
-	TagTier        decay.Tier
-	TagDays        int
-	TagProgress    float64
-	HasTag         bool
-	Error          string
-}
-
-func BuildRows(repos map[string]cache.RepoEntry) ([]RepoRow, []string) {
-	type rowPath struct {
-		row  RepoRow
-		path string
-	}
-
-	all := make([]rowPath, 0, len(repos))
-	for name, entry := range repos {
-		row := RepoRow{Name: filepath.Base(name), Tag: entry.LastTag}
-		if entry.Error != "" {
-			row.Error = entry.Error
-		} else {
-			if entry.LastCommitDate != nil {
-				row.CommitDays = decay.AgeDays(*entry.LastCommitDate)
-				row.CommitTier = decay.ClassifyByDays(row.CommitDays)
-				row.CommitProgress = decay.TierProgress(row.CommitDays)
-			}
-			if entry.LastTagDate != nil {
-				row.TagDays = decay.AgeDays(*entry.LastTagDate)
-				row.TagTier = decay.ClassifyByDays(row.TagDays)
-				row.TagProgress = decay.TierProgress(row.TagDays)
-				row.HasTag = true
-			}
-		}
-		all = append(all, rowPath{row: row, path: name})
-	}
-
-	sort.Slice(all, func(i, j int) bool {
-		a, b := all[i].row, all[j].row
-		aErr, bErr := a.Error != "", b.Error != ""
-		if aErr != bErr {
-			return !aErr
-		}
-		if aErr && bErr {
-			return a.Name < b.Name
-		}
-		if a.CommitTier != b.CommitTier {
-			return a.CommitTier > b.CommitTier
-		}
-		if a.CommitDays != b.CommitDays {
-			return a.CommitDays > b.CommitDays
-		}
-		return a.Name < b.Name
-	})
-
-	rows := make([]RepoRow, len(all))
-	paths := make([]string, len(all))
-	for i, rp := range all {
-		rows[i] = rp.row
-		paths[i] = rp.path
-	}
-	return rows, paths
-}
-
 func Columns(repoWidth int) []table.Column {
 	return []table.Column{
 		{Title: "", Width: 0},
@@ -158,7 +80,7 @@ func TableStyles() table.Styles {
 	return s
 }
 
-func rowToTableRow(row RepoRow, fullPath string, repoWidth int) table.Row {
+func rowToTableRow(row core.RepoRow, fullPath string, repoWidth int) table.Row {
 	if row.Error != "" {
 		return table.Row{
 			fullPath,
@@ -181,8 +103,8 @@ func rowToTableRow(row RepoRow, fullPath string, repoWidth int) table.Row {
 }
 
 func NewTable(repos map[string]cache.RepoEntry, height int, focused bool) (table.Model, []string) {
-	rows, paths := BuildRows(repos)
-	repoWidth := repoColumnWidth(rows)
+	rows, paths := core.BuildRows(repos)
+	repoWidth := core.RepoColumnWidth(rows)
 	tableRows := make([]table.Row, 0, len(rows))
 	for i, r := range rows {
 		tableRows = append(tableRows, rowToTableRow(r, paths[i], repoWidth))
@@ -235,7 +157,7 @@ func FormatDashboard(repos map[string]cache.RepoEntry, verbose bool) string {
 		return b.String()
 	}
 
-	rows, _ := BuildRows(repos)
+	rows, _ := core.BuildRows(repos)
 	headerCellStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Padding(0, 1)
 	cellStyle := lipgloss.NewStyle().Padding(0, 1)
 

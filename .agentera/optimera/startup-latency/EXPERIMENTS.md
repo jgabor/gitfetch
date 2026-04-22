@@ -26,3 +26,9 @@
 **Conclusion**: UPX's default NRV2B codec decompresses ~4× faster than LZMA but still imposes ~13 ms per exec. Size ladder: LZMA 1.32 MB / NRV2B 1.69 MB / uncompressed 4.37 MB. NRV2B is a reasonable middle ground if binary size ever becomes a hard constraint (e.g., embedded/CI images), but for a `.bashrc` CLI the 13 ms cost outweighs the 2.7 MB saving — uncompressed stays the right default.
 **Next**: leave `GITFETCH_COMPRESS=1` as the LZMA opt-in; no need for a separate NRV2B toggle unless size pressure emerges.
 
+## Objective Closed · 2026-04-22
+
+**Final metric**: 1.294 ms mean
+**Target**: ≤ 10 ms ✓ · stretch ≤ 5 ms ✓
+**Summary**: Two experiments, one kept. UPX-LZMA removal (Experiment 1) was the sole meaningful change. NRV2B characterization (Experiment 2) informed the default but landed no code. Objective archived.
+

@@ -12,8 +12,11 @@ _(empty)_
 
 ## ⇢ Annoying
 
-- [ ] Decide whether `internal/display` should stay bubbles-aware or split into pure-format + table-widget submodules (Coupling finding, Audit 2 — deferred to `/resonera`)
 - [ ] Consider decomposing `handleDiscovering` (57 lines / 6 branches / 3 config.Save sites) if the discover mode grows new keys — Audit 3 info finding, HEALTH.md notes deferral is appropriate until the mode expands further
+
+### Resonera decisions (2026-04-22)
+- [x] `internal/display` → bubbles coupling — resolved in Decision 2 (split to `core/` + `theme/` + `display/` + `tui/`) · see `.agentera/DECISIONS.md`
+- [x] Layout and visual hierarchy — resolved in Decision 3 (compact side-by-side bars in single "Decay" column, flat list sorted by commit decay, repo name first) · see `.agentera/DECISIONS.md`
 
 ## Resolved
 

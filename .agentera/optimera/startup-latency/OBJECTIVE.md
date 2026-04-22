@@ -46,3 +46,10 @@ An experiment can opt out of UPX compression (via `GITFETCH_HARNESS_NO_UPX=1`) w
 - `go.mod` — dependency swaps when justified by a hypothesis.
 
 Out of scope unless a hypothesis explicitly justifies it: `internal/tui/`, `internal/git/`.
+
+## Status
+
+**Closed** · 2026-04-22
+
+Final metric: 1.294 ms mean (50 runs, uncompressed binary). Target ≤ 10 ms met; stretch ≤ 5 ms met.
+Experiment 1 (removing UPX-LZMA compression) delivered the decisive 61× improvement. Experiment 2 quantified the NRV2B middle ground and confirmed uncompressed is the right default for a `.bashrc` tool.
