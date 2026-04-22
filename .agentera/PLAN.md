@@ -44,7 +44,7 @@ Audit 2 flagged `display → bubbles` coupling: the print path imports `bubbles/
 
 ### Task 2: Create `theme/` package
 **Depends on**: Task 1
-**Status**: □ pending
+**Status**: ■ complete
 **Acceptance**:
 ▸ GIVEN `theme.GradientBar(tier, pct)` WHEN called with any `decay.Tier` THEN it returns a lipgloss-styled string
 ▸ GIVEN `theme.GradientBar` WHEN called with 0% or 100% progress THEN edge cases render correctly

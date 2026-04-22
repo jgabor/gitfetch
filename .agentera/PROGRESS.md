@@ -187,3 +187,14 @@
 **Verified**: `go build ./...` clean · `go vet ./...` clean · `go test ./...` all eight packages pass (new `core/` + existing seven) · `go run ./cmd/gitfetch` renders real 16-repo dashboard unchanged · `internal/core/` tests cover empty, fresh, error, no-tag, multi-tier, sort order, and column width
 **Next**: Task 2 — create `internal/theme/` package with gradient bar generation
 **Context**: plan-driven Task 1 · scope: `internal/core/core.go`, `internal/core/core_test.go`, `internal/display/display.go` import updates · constraints: do not create theme/ yet, do not move NewTable/TableStyles to tui/ yet · unknowns: whether `bubbles/table` will render ANSI gradient sequences correctly (flagged in Decision 2 as provisional risk)
+
+## Cycle · 2026-04-22 (PLAN display-split Task 2)
+
+**What**: created `internal/theme/` package with `GradientBar` and `TierColor` helpers — per-character color interpolation using `lipgloss` + `go-colorful`
+**Commit**: 0597383 feat(theme): create theme package with gradient bars and tier colors
+**Inspiration**: `go-colorful` for Lab-space interpolation; each tier gradients from its base ANSI color to a 40%-darkened variant
+**Discovered**: `lipgloss` strips ANSI sequences in non-TTY environments (e.g., `go test`), causing naive string-equality tests to falsely claim all tier bars are identical. Fixed by forcing `termenv.TrueColor` in `TestMain`.
+**Verified**: `go build ./...` clean · `go vet ./...` clean · `go test ./...` all eight packages pass · `go test ./internal/theme/` reports 100% coverage (TierColor ×4, GradientBar pass+fail ×4 tiers, edge cases ×4, distinct-tier test) · `go run ./cmd/gitfetch` renders real 16-repo dashboard unchanged (theme/ not yet wired into display/ or tui/)
+**Next**: Task 3 — refactor `display/` for print rendering (wire theme.GradientBar, remove bubbles/table import)
+**Context**: plan-driven Task 2 · scope: `internal/theme/theme.go`, `internal/theme/theme_test.go`, `go.mod`/`go.sum` (go-colorful promoted to direct dep) · constraints: did NOT modify display/ or tui/ yet per plan · unknowns: none
+
