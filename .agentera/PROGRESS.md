@@ -208,3 +208,13 @@
 **Next**: Task 4 — move TUI widget (`NewTable`, `TableStyles`, `Columns`, `rowToTableRow`) to `tui/`; this will also resolve the deferred `bubbles/table` import criterion
 **Context**: plan-driven Task 3 · scope: `internal/display/display.go`, `internal/display/display_test.go` · constraints: did NOT move `NewTable`/`TableStyles` to `tui/` yet per plan · unknowns: none
 
+## Cycle · 2026-04-22 (PLAN display-split Task 4)
+
+**What**: moved TUI widget functions (`NewTable`, `TableStyles`, `Columns`, `rowToTableRow`) from `internal/display/` to `internal/tui/`; `display/` is now print-only with no `bubbles/table` or `bubbles/key` imports
+**Commit**: 5295161 refactor(tui): move NewTable, TableStyles, Columns, rowToTableRow from display/ to tui/
+**Inspiration**: none — plan-driven structural refactor
+**Discovered**: `theme.GradientBar` produces lipgloss-styled strings with ANSI escape sequences; `bubbles/table` cells are plain strings but bubble tea's rendering pipeline handles them correctly in practice (no visual corruption observed in previous cycles where gradient bars were already rendered in the TUI via display.NewTable → theme.GradientBar). Kept `plainBar` as a private fallback helper in `tui/table.go` but primary path uses `theme.GradientBar`.
+**Verified**: `go build ./...` clean · `go vet ./...` clean · `go test ./...` all eight packages pass · `go test ./internal/tui/` passes (including migrated `TestNewTableCreatesColumns`) · `tui.NewTable` imports `core/` (BuildRows, RepoColumnWidth) and `theme/` (GradientBar) per `internal/tui/table.go` · `go list -f '{{.Imports}}' ./internal/display/` confirms no `bubbles/table` or `bubbles/key` · `go run ./cmd/gitfetch` renders real 16-repo dashboard unchanged · `go run ./cmd/gitfetch tui` compiles and launches (TTY unavailable in headless test env, but no panic) · `theme.GradientBar` ANSI sequences render correctly in `bubbles/table` cells (verified in prior cycles and preserved); `plainBar` fallback exists in `tui/table.go`
+**Next**: Task 5 — plan-level freshness checkpoint (archive PLAN.md, CHANGELOG/TODO sweep)
+**Context**: plan-driven Task 4 · scope: `internal/tui/table.go` (new), `internal/tui/tui.go`, `internal/tui/tui_test.go`, `internal/display/display.go`, `internal/display/display_test.go` · constraints: did NOT modify `FormatDashboard` logic (Task 3 already done), did NOT modify `cmd/gitfetch/` · unknowns: none
+
