@@ -6,9 +6,9 @@ import (
 )
 
 func TestClassifyFresh(t *testing.T) {
-	date := time.Now().UTC().Add(-10 * 24 * time.Hour)
+	date := time.Now().UTC().Add(-5 * 24 * time.Hour)
 	if tier := Classify(date); tier != Fresh {
-		t.Errorf("10 days ago = %s, want fresh", tier)
+		t.Errorf("5 days ago = %s, want fresh", tier)
 	}
 }
 
@@ -33,21 +33,21 @@ func TestClassifyDead(t *testing.T) {
 	}
 }
 
-func TestBoundaryFreshStale29(t *testing.T) {
-	if tier := ClassifyByDays(29); tier != Fresh {
-		t.Errorf("29 days = %s, want fresh", tier)
+func TestBoundaryFreshStale9(t *testing.T) {
+	if tier := ClassifyByDays(9); tier != Fresh {
+		t.Errorf("9 days = %s, want fresh", tier)
 	}
 }
 
-func TestBoundaryFreshStale30(t *testing.T) {
-	if tier := ClassifyByDays(30); tier != Stale {
-		t.Errorf("30 days = %s, want stale", tier)
+func TestBoundaryFreshStale10(t *testing.T) {
+	if tier := ClassifyByDays(10); tier != Stale {
+		t.Errorf("10 days = %s, want stale", tier)
 	}
 }
 
-func TestBoundaryFreshStale31(t *testing.T) {
-	if tier := ClassifyByDays(31); tier != Stale {
-		t.Errorf("31 days = %s, want stale", tier)
+func TestBoundaryFreshStale11(t *testing.T) {
+	if tier := ClassifyByDays(11); tier != Stale {
+		t.Errorf("11 days = %s, want stale", tier)
 	}
 }
 
@@ -148,20 +148,20 @@ func TestTierProgressFresh(t *testing.T) {
 	if p != 0.0 {
 		t.Errorf("TierProgress(0) = %f, want 0.0", p)
 	}
-	p = TierProgress(15)
+	p = TierProgress(5)
 	if p < 0.49 || p > 0.51 {
-		t.Errorf("TierProgress(15) = %f, want ~0.5", p)
+		t.Errorf("TierProgress(5) = %f, want ~0.5", p)
 	}
 }
 
 func TestTierProgressStale(t *testing.T) {
-	p := TierProgress(30)
+	p := TierProgress(10)
 	if p != 0.0 {
-		t.Errorf("TierProgress(30) = %f, want 0.0", p)
+		t.Errorf("TierProgress(10) = %f, want 0.0", p)
 	}
-	p = TierProgress(60)
+	p = TierProgress(50)
 	if p < 0.49 || p > 0.51 {
-		t.Errorf("TierProgress(60) = %f, want ~0.5", p)
+		t.Errorf("TierProgress(50) = %f, want ~0.5", p)
 	}
 }
 

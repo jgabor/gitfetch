@@ -51,7 +51,7 @@ func FormatDashboard(repos map[string]cache.RepoEntry, verbose bool) string {
 		})
 
 	if verbose {
-		tbl.Headers("Repo", "Version", "Tier", "Decay", "Age")
+		tbl.Headers("Repo", "Version", "Tier", "Commit", "Age")
 	}
 
 	for _, r := range rows {
@@ -62,15 +62,16 @@ func FormatDashboard(repos map[string]cache.RepoEntry, verbose bool) string {
 		tier := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(r.CommitTier.Color())).
 			Render(r.CommitTier.String())
-		decayCell := theme.GradientBar(r.CommitDays, r.CommitProgress)
+		tagCell := r.Tag
 		if r.HasTag {
-			decayCell = decayCell + " " + theme.GradientBar(r.TagDays, r.TagProgress)
+			tagCell = lipgloss.NewStyle().Foreground(lipgloss.Color(r.TagTier.Color())).Render(r.Tag)
 		}
+		commitCell := theme.GradientBar(r.CommitDays, r.CommitProgress, theme.BarWidth)
 		tbl.Row(
 			r.Name,
-			r.Tag,
+			tagCell,
 			tier,
-			decayCell,
+			commitCell,
 			fmt.Sprintf("%dd", r.CommitDays),
 		)
 	}

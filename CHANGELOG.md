@@ -32,6 +32,15 @@
 - Dual-decay layout in print dashboard — commit and tag decay bars rendered side by side in a single "Decay" column
 
 ### Changed
+- `decay.FreshLimit` tightened from 30 → 10 days to reflect "fresh" meaning actively-worked-on; decay tests and `core.BuildRows` fixtures updated accordingly; spectrum palette segments recompute automatically from the new tier bounds
+- TUI display-width correctness: `viewDiscovering` and `truncatePlain` use `runewidth.StringWidth`/`runewidth.Truncate` instead of byte-based `len()` — fixes column alignment and truncation for multibyte repo names
+- TUI terminal robustness: cursor renders as static block (no ANSI blink), header uses ASCII-safe dash separator, `visibleRange` edge case already handled correctly
+- TUI keybinding cleanup: normal mode help bar lists all scroll keys (ctrl+u, ctrl+d, pgup, pgdown, home, end); discover mode shows only discover-specific bindings
+- TUI scan feedback: restructured scan to emit per-repo progress (`scanProgressMsg`) showing counter ("scanning 3/12…") instead of static "scanning…"
+- TUI empty states: shows "No scan data yet. Press 'r' to refresh." when repos exist but cache is empty
+- TUI error lifecycle: errors auto-clear after 5 seconds (with sequence counter to prevent stale ticks) and clear on any successful action
+- `theme.GradientBar` accepts dynamic width parameter; `ComputeBarWidth` adapts bar to terminal width
+- TUI confirmation mode: pressing `d`/`x` now shows "Remove 'name'? y/Enter · n/Esc/q" prompt before deleting — no more accidental removals
 - Default config no longer seeds `~/projects`; new installs start with an empty repo list (opt in via `gitfetch tui` or `config.toml`)
 - `cache.FilterByRepos` centralizes the "filter cache by configured repos" logic; `cmd/gitfetch` and `internal/tui` now share a single source of truth
 - Scanner skips author and remote collection when no `--author`/`--remote` filter is set, restoring sub-500ms refresh on repos with long history

@@ -13,6 +13,7 @@ _(empty)_
 ## ⇢ Annoying
 
 - [ ] Consider decomposing `handleDiscovering` (57 lines / 6 branches / 3 config.Save sites) if the discover mode grows new keys — Audit 3 info finding, HEALTH.md notes deferral is appropriate until the mode expands further
+- [ ] Light/dark terminal adaptation — gradient bar and selection colors use hardcoded ANSI indices; should detect terminal background and adjust palette accordingly (flagged during TUI UX polish plan)
 
 ### Resonera decisions (2026-04-22)
 - [x] `internal/display` → bubbles coupling — resolved in Decision 2 (split to `core/` + `theme/` + `display/` + `tui/`) · see `.agentera/DECISIONS.md`

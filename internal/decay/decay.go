@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	FreshLimit   = 30
+	FreshLimit   = 10
 	StaleLimit   = 90
 	DecayedLimit = 180
 )

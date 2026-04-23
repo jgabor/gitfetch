@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	BarWidth   = 15
+	BarWidth   = 30
 	BarFilled  = "█"
 	BarEmpty   = "░"
 	EmptyColor = "240"
@@ -22,18 +22,33 @@ var (
 	colorYellow   = lipgloss.Color("#cdcd00")
 	colorOrange   = lipgloss.Color("#ff8700")
 	colorRed      = lipgloss.Color("#cd0000")
-	colorDarkRed  = lipgloss.Color("#660000")
 )
 
-// spectrumPalette is a pre-generated 361-color palette covering the full
-// decay spectrum from 0 to 360 days.
-var spectrumPalette = lipgloss.Blend1D(361,
-	colorGreen,
-	colorYellow,
-	colorOrange,
-	colorRed,
-	colorDarkRed,
-)
+// spectrumPalette maps each day (0..DecayedLimit) to a color aligned with
+// tier boundaries: green through fresh, yellow→orange through stale,
+// orange→red through decayed.
+var spectrumPalette = buildSpectrumPalette()
+
+func buildSpectrumPalette() []color.Color {
+	type segment struct {
+		steps    int
+		from, to color.Color
+	}
+	segs := []segment{
+		{decay.FreshLimit, colorGreen, colorYellow},
+		{decay.StaleLimit - decay.FreshLimit, colorYellow, colorOrange},
+		{decay.DecayedLimit - decay.StaleLimit, colorOrange, colorRed},
+	}
+	var palette []color.Color
+	for _, s := range segs {
+		blend := lipgloss.Blend1D(s.steps+1, s.from, s.to)
+		if palette != nil {
+			blend = blend[1:]
+		}
+		palette = append(palette, blend...)
+	}
+	return palette
+}
 
 // TierColor returns the base lipgloss color for a decay tier.
 func TierColor(tier decay.Tier) color.Color {
@@ -53,9 +68,13 @@ func AgeColor(days int) color.Color {
 
 // GradientBar returns a lipgloss-styled gradient bar for the given repo age and
 // progress percentage (0.0–1.0). Values outside [0,1] are clamped.
-// The gradient always starts at green (age 0) and progresses through the full
-// age color spectrum up to the repo's actual age.
-func GradientBar(days int, pct float64) string {
+// The gradient maps each filled character to a color from the tier-aligned
+// spectrum palette. Days beyond DecayedLimit are clamped so the bar saturates
+// at the maximum decay color (red).
+func GradientBar(days int, pct float64, width int) string {
+	if width < 1 {
+		width = 1
+	}
 	if pct < 0 {
 		pct = 0
 	}
@@ -63,21 +82,24 @@ func GradientBar(days int, pct float64) string {
 		pct = 1
 	}
 
-	filled := int(math.Round(float64(BarWidth) * pct))
-	if filled > BarWidth {
-		filled = BarWidth
+	filled := int(math.Round(float64(width) * pct))
+	if filled > width {
+		filled = width
 	}
 
 	emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(EmptyColor))
 
 	var b strings.Builder
-	for i := 0; i < BarWidth; i++ {
+	for i := 0; i < width; i++ {
 		if i < filled {
 			t := 0.0
-			if BarWidth > 1 {
-				t = float64(i) / float64(BarWidth-1)
+			if width > 1 {
+				t = float64(i) / float64(width-1)
 			}
 			age := int(t * float64(days))
+			if age >= len(spectrumPalette) {
+				age = len(spectrumPalette) - 1
+			}
 			c := AgeColor(age)
 			style := lipgloss.NewStyle().Foreground(c)
 			b.WriteString(style.Render(BarFilled))

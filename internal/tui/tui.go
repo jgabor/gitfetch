@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
@@ -13,6 +14,7 @@ import (
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
 	gitscanner "github.com/jgabor/gitfetch/internal/git"
+	"github.com/mattn/go-runewidth"
 )
 
 type mode int
@@ -21,15 +23,32 @@ const (
 	modeNormal mode = iota
 	modeAdding
 	modeDiscovering
+	modeConfirming
 )
 
-type scanDoneMsg struct {
-	results []gitscanner.ScanResult
+type scanProgressMsg struct {
+	done      int
+	total     int
+	result    gitscanner.ScanResult
+	remaining []string
 }
 
 type discoveredRepo struct {
 	path     string
 	selected bool
+}
+
+type clearErrorMsg struct {
+	seq int
+}
+
+func startErrorAutoClear(m *model, err error) tea.Cmd {
+	m.err = err
+	m.errSeq++
+	seq := m.errSeq
+	return tea.Tick(5*time.Second, func(_ time.Time) tea.Msg {
+		return clearErrorMsg{seq: seq}
+	})
 }
 
 type model struct {
@@ -45,6 +64,9 @@ type model struct {
 	statusMsg string
 	quitting  bool
 	err       error
+	errSeq    int
+
+	confirmTarget string
 
 	discovered          []discoveredRepo
 	discoverCursor      int
@@ -54,6 +76,10 @@ type model struct {
 	width       int
 	inputBuffer string
 	scanning    bool
+
+	scanDone    int
+	scanTotal   int
+	scanResults []gitscanner.ScanResult
 }
 
 var (
@@ -67,8 +93,8 @@ var (
 	uncheckStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
-func buildTableModel(repos map[string]cache.RepoEntry, height int) table.Model {
-	t, _ := NewTable(repos, height, true)
+func buildTableModel(repos map[string]cache.RepoEntry, height, termWidth int) table.Model {
+	t, _ := NewTable(repos, height, true, termWidth)
 	s := TableStyles()
 	s.Selected = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("15")).
@@ -79,7 +105,7 @@ func buildTableModel(repos map[string]cache.RepoEntry, height int) table.Model {
 
 func (m *model) rebuildTable() {
 	fc := cache.FilterByRepos(m.c, m.repos)
-	m.table = buildTableModel(fc, m.height-6)
+	m.table = buildTableModel(fc, m.height-6, m.width)
 }
 
 func NewModel(cfg *config.Config, cfgPath string, c *cache.Cache, cachePath string) model {
@@ -115,6 +141,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return handleAdding(m, msg)
 		case modeDiscovering:
 			return handleDiscovering(m, msg)
+		case modeConfirming:
+			return handleConfirming(m, msg)
 		default:
 			var tableCmd tea.Cmd
 			m.table, tableCmd = m.table.Update(msg)
@@ -124,14 +152,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Batch(tableCmd, keyCmd)
 		}
-	case scanDoneMsg:
-		return handleScanDone(m, msg)
+	case scanProgressMsg:
+		return handleScanProgress(m, msg)
+	case clearErrorMsg:
+		if m.errSeq == msg.seq {
+			m.err = nil
+		}
+		return m, nil
 	}
 	return m, nil
 }
 
 func handleNormalKeys(m *model, msg tea.KeyPressMsg) tea.Cmd {
-	switch msg.Text {
+	switch msg.String() {
 	case "q", "ctrl+c":
 		m.quitting = true
 	case "r":
@@ -147,15 +180,21 @@ func handleNormalKeys(m *model, msg tea.KeyPressMsg) tea.Cmd {
 		m.statusMsg = ""
 		m.inputBuffer = ""
 	case "d", "x":
-		removeRepo(m)
+		selected := m.table.SelectedRow()
+		if len(selected) > 0 && selected[0] != "" {
+			m.mode = modeConfirming
+			m.confirmTarget = selected[0]
+			m.statusMsg = ""
+		}
 	}
 	return nil
 }
 
 func handleAdding(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.Text {
+	switch msg.String() {
 	case "enter":
-		return commitNewRepo(m), nil
+		m, cmd := commitNewRepo(m)
+		return m, cmd
 	case "esc":
 		m.mode = modeNormal
 		m.inputBuffer = ""
@@ -174,13 +213,42 @@ func handleAdding(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func commitNewRepo(m model) model {
+func handleConfirming(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "enter":
+		target := m.confirmTarget
+		m.mode = modeNormal
+		m.confirmTarget = ""
+		for i, r := range m.repos {
+			if r == target {
+				m.repos = append(m.repos[:i], m.repos[i+1:]...)
+				break
+			}
+		}
+		m.cfg.Repos = m.repos
+		if err := config.Save(m.cfgPath, m.cfg); err != nil {
+			return m, startErrorAutoClear(&m, err)
+		}
+		m.err = nil
+		m.statusMsg = fmt.Sprintf("removed: %s", filepath.Base(target))
+		m.rebuildTable()
+		return m, nil
+	case "n", "esc", "q":
+		m.mode = modeNormal
+		m.confirmTarget = ""
+		return m, nil
+	default:
+		return m, nil
+	}
+}
+
+func commitNewRepo(m model) (model, tea.Cmd) {
 	path := strings.TrimSpace(m.inputBuffer)
 	m.inputBuffer = ""
 	if path == "" {
 		m.mode = modeNormal
 		m.rebuildTable()
-		return m
+		return m, nil
 	}
 	path = config.ExpandPath(path)
 
@@ -199,30 +267,30 @@ func commitNewRepo(m model) model {
 			m.discoverAllSelected = true
 			m.mode = modeDiscovering
 			m.statusMsg = ""
-			return m
+			return m, nil
 		}
 	}
 
 	if slices.Contains(m.repos, path) {
 		m.statusMsg = fmt.Sprintf("already tracked: %s", path)
-		return m
+		return m, nil
 	}
 	m.repos = append(m.repos, path)
 	m.cfg.Repos = m.repos
 	if err := config.Save(m.cfgPath, m.cfg); err != nil {
-		m.err = err
 		m.mode = modeNormal
-		return m
+		return m, startErrorAutoClear(&m, err)
 	}
 	m.mode = modeNormal
+	m.err = nil
 	m.statusMsg = fmt.Sprintf("added: %s", path)
 	m.rebuildTable()
-	return m
+	return m, nil
 }
 
 func handleDiscovering(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	total := len(m.discovered)
-	switch msg.Text {
+	switch msg.String() {
 	case "up", "k":
 		if m.discoverCursor > 0 {
 			m.discoverCursor--
@@ -231,7 +299,7 @@ func handleDiscovering(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.discoverCursor < total-1 {
 			m.discoverCursor++
 		}
-	case " ":
+	case "space":
 		if total > 0 {
 			m.discovered[m.discoverCursor].selected = !m.discovered[m.discoverCursor].selected
 		}
@@ -254,14 +322,14 @@ func handleDiscovering(m model, msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		m.cfg.Repos = m.repos
 		if err := config.Save(m.cfgPath, m.cfg); err != nil {
-			m.err = err
 			m.mode = modeNormal
 			m.discovered = nil
 			m.rebuildTable()
-			return m, nil
+			return m, startErrorAutoClear(&m, err)
 		}
 		m.mode = modeNormal
 		m.discovered = nil
+		m.err = nil
 		if len(added) > 0 {
 			m.statusMsg = fmt.Sprintf("added %d repos: %s", len(added), strings.Join(added, ", "))
 		} else {
@@ -283,13 +351,57 @@ func startScan(m model) tea.Cmd {
 	repos := make([]string, len(m.repos))
 	copy(repos, m.repos)
 	return func() tea.Msg {
-		return scanDoneMsg{results: gitscanner.ScanAll(repos, gitscanner.ScanOptions{})}
+		resolved := gitscanner.ResolveRepoPaths(repos)
+		if len(resolved) == 0 {
+			return scanProgressMsg{done: 0, total: 0}
+		}
+		result := gitscanner.ScanRepo(resolved[0], gitscanner.ScanOptions{})
+		return scanProgressMsg{
+			done:      1,
+			total:     len(resolved),
+			result:    result,
+			remaining: resolved[1:],
+		}
 	}
 }
 
-func handleScanDone(m model, msg scanDoneMsg) (tea.Model, tea.Cmd) {
+func scanNextRepo(done, total int, remaining []string) tea.Cmd {
+	if len(remaining) == 0 {
+		return nil
+	}
+	repo := remaining[0]
+	rest := make([]string, len(remaining)-1)
+	copy(rest, remaining[1:])
+	return func() tea.Msg {
+		result := gitscanner.ScanRepo(repo, gitscanner.ScanOptions{})
+		return scanProgressMsg{
+			done:      done + 1,
+			total:     total,
+			result:    result,
+			remaining: rest,
+		}
+	}
+}
+
+func handleScanProgress(m model, msg scanProgressMsg) (tea.Model, tea.Cmd) {
+	if msg.total == 0 {
+		m.scanning = false
+		m.statusMsg = "no repos to scan"
+		return m, nil
+	}
+	m.scanDone = msg.done
+	m.scanTotal = msg.total
+	m.scanResults = append(m.scanResults, msg.result)
+	m.statusMsg = fmt.Sprintf("scanning %d/%d…", msg.done, msg.total)
+	if len(msg.remaining) == 0 {
+		return finalizeScan(m)
+	}
+	return m, scanNextRepo(msg.done, msg.total, msg.remaining)
+}
+
+func finalizeScan(m model) (tea.Model, tea.Cmd) {
 	m.scanning = false
-	for _, r := range msg.results {
+	for _, r := range m.scanResults {
 		m.c.Repos[r.RepoPath] = cache.RepoEntry{
 			LastCommitDate: r.LastCommitDate,
 			LastTagDate:    r.LastTagDate,
@@ -299,44 +411,26 @@ func handleScanDone(m model, msg scanDoneMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	if err := cache.Save(m.cachePath, m.c); err != nil {
-		m.err = err
-		return m, nil
+		m.scanResults = nil
+		m.scanDone = 0
+		m.scanTotal = 0
+		return m, startErrorAutoClear(&m, err)
 	}
 	ok, fail := 0, 0
-	for _, r := range msg.results {
+	for _, r := range m.scanResults {
 		if r.Error != "" {
 			fail++
 		} else {
 			ok++
 		}
 	}
-	m.statusMsg = fmt.Sprintf("refreshed %d repos: %d ok, %d failed", len(msg.results), ok, fail)
+	m.statusMsg = fmt.Sprintf("refreshed %d repos: %d ok, %d failed", len(m.scanResults), ok, fail)
+	m.scanResults = nil
+	m.scanDone = 0
+	m.scanTotal = 0
+	m.err = nil
 	m.rebuildTable()
 	return m, nil
-}
-
-func removeRepo(m *model) {
-	selected := m.table.SelectedRow()
-	if len(selected) == 0 {
-		return
-	}
-	removed := selected[0]
-	if removed == "" {
-		return
-	}
-	for i, r := range m.repos {
-		if r == removed {
-			m.repos = append(m.repos[:i], m.repos[i+1:]...)
-			break
-		}
-	}
-	m.cfg.Repos = m.repos
-	if err := config.Save(m.cfgPath, m.cfg); err != nil {
-		m.err = err
-		return
-	}
-	m.statusMsg = fmt.Sprintf("removed: %s", filepath.Base(removed))
-	m.rebuildTable()
 }
 
 func visibleRange(cursor, total, availableLines int) (start, end int) {
@@ -366,7 +460,7 @@ func (m model) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(headerStyle.Render("gitfetch — repo decay tracker"))
+	b.WriteString(headerStyle.Render("gitfetch - repo decay tracker"))
 	b.WriteString("\n\n")
 
 	if m.mode == modeDiscovering {
@@ -375,6 +469,9 @@ func (m model) View() tea.View {
 
 	if len(m.repos) == 0 {
 		b.WriteString(helpStyle.Render("No repos tracked. Press 'a' to add a path or directory."))
+		b.WriteString("\n")
+	} else if len(m.table.Rows()) == 0 {
+		b.WriteString(helpStyle.Render("No scan data yet. Press 'r' to refresh."))
 		b.WriteString("\n")
 	} else {
 		b.WriteString(m.table.View())
@@ -386,12 +483,17 @@ func (m model) View() tea.View {
 	if m.mode == modeAdding {
 		b.WriteString(promptStyle.Render("Add path (directory or repo): "))
 		b.WriteString(m.inputBuffer)
-		b.WriteString(lipgloss.NewStyle().Blink(true).Render("█"))
+		b.WriteString(cursorStyle.Render("█"))
 		b.WriteString("\n")
 		b.WriteString(helpStyle.Render("Enter to confirm · Directories auto-discover repos · Esc to cancel"))
 		b.WriteString("\n")
+	} else if m.mode == modeConfirming {
+		b.WriteString(promptStyle.Render(fmt.Sprintf("Remove '%s'?", filepath.Base(m.confirmTarget))))
+		b.WriteString("\n")
+		b.WriteString(helpStyle.Render("y/Enter to confirm · n/Esc/q to cancel"))
+		b.WriteString("\n")
 	} else {
-		b.WriteString(helpStyle.Render("↑/k up · ↓/j down · r refresh · a add · d/x remove · q quit"))
+		b.WriteString(helpStyle.Render("↑/k up · ↓/j down · ctrl+u half-up · ctrl+d half-down · pgup/pgdown page · home/end jump · r refresh · a add · d/x remove · q quit"))
 		b.WriteString("\n")
 	}
 
@@ -449,15 +551,21 @@ func viewDiscovering(m model, b *strings.Builder) tea.View {
 		}
 
 		name := filepath.Base(d.path)
-		maxPathWidth := m.width - len(name) - 8
+		nameWidth := runewidth.StringWidth(name)
+		maxPathWidth := m.width - nameWidth - 8
 		pathStr := d.path
-		if maxPathWidth > 10 && len(pathStr) > maxPathWidth {
-			pathStr = "..." + pathStr[len(pathStr)-maxPathWidth+3:]
+		if maxPathWidth > 10 && runewidth.StringWidth(pathStr) > maxPathWidth {
+			pathStr = truncatePlain(pathStr, maxPathWidth)
 		}
 
 		b.WriteString(cursor)
 		b.WriteString(style.Render(fmt.Sprintf("%s ", check)))
-		fmt.Fprintf(b, "%-20s", name)
+		padWidth := 20 - nameWidth
+		if padWidth > 0 {
+			b.WriteString(name + strings.Repeat(" ", padWidth))
+		} else {
+			b.WriteString(truncatePlain(name, 20))
+		}
 		b.WriteString(helpStyle.Render(fmt.Sprintf("  %s", pathStr)))
 		b.WriteString("\n")
 	}
@@ -468,7 +576,7 @@ func viewDiscovering(m model, b *strings.Builder) tea.View {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("Space toggle · Enter confirm · a toggle all · Esc cancel"))
+	b.WriteString(helpStyle.Render("↑/k up · ↓/j down · Space toggle · a toggle all · Enter confirm · Esc cancel"))
 	b.WriteString("\n")
 
 	if m.statusMsg != "" {

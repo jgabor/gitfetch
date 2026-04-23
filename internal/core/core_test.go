@@ -20,8 +20,8 @@ func TestBuildRowsEmpty(t *testing.T) {
 }
 
 func TestBuildRowsFreshRepo(t *testing.T) {
-	commitDate := makeDate(10)
-	tagDate := makeDate(5)
+	commitDate := makeDate(5)
+	tagDate := makeDate(2)
 	repos := map[string]cache.RepoEntry{
 		"/home/user/project": {
 			LastCommitDate: &commitDate,

@@ -60,7 +60,7 @@ func TestFormatDashboardQuietOmitsChrome(t *testing.T) {
 	if strings.Contains(out, "gitfetch --") {
 		t.Errorf("quiet dashboard must omit app header: %q", out)
 	}
-	if strings.Contains(out, "Repo") && strings.Contains(out, "Version") && strings.Contains(out, "Decay") {
+	if strings.Contains(out, "Repo") && strings.Contains(out, "Version") && strings.Contains(out, "Commit") {
 		t.Errorf("quiet dashboard must omit table headers: %q", out)
 	}
 	if !strings.Contains(out, "r1") {
@@ -99,6 +99,7 @@ func TestFormatDashboardDualDecayBars(t *testing.T) {
 		"/r1": {
 			LastCommitDate: &commitDate,
 			LastTagDate:    &tagDate,
+			LastTag:        "v1.0.0",
 			ScannedAt:      time.Now().UTC(),
 		},
 	}
@@ -106,7 +107,7 @@ func TestFormatDashboardDualDecayBars(t *testing.T) {
 	stripped := ansi.Strip(out)
 	barCount := strings.Count(stripped, "█") + strings.Count(stripped, "░")
 	if barCount != 30 {
-		t.Errorf("expected exactly 30 bar glyphs for dual decay bars, got %d", barCount)
+		t.Errorf("expected exactly 30 bar glyphs for commit bar, got %d", barCount)
 	}
 }
 
@@ -121,8 +122,8 @@ func TestFormatDashboardSingleDecayBar(t *testing.T) {
 	out := FormatDashboard(repos, false)
 	stripped := ansi.Strip(out)
 	barCount := strings.Count(stripped, "█") + strings.Count(stripped, "░")
-	if barCount != 15 {
-		t.Errorf("expected exactly 15 bar glyphs for single decay bar, got %d", barCount)
+	if barCount != 30 {
+		t.Errorf("expected exactly 30 bar glyphs for single commit bar, got %d", barCount)
 	}
 }
 
