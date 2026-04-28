@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -79,7 +78,7 @@ func ScanAll(repoPaths []string, opts ScanOptions) []ScanResult {
 		return nil
 	}
 
-	sem := make(chan struct{}, runtime.GOMAXPROCS(0))
+	sem := make(chan struct{}, 4)
 	results := make([]ScanResult, n)
 	var wg sync.WaitGroup
 
