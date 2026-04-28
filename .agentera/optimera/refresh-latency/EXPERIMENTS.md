@@ -110,10 +110,12 @@
 
 **Regression**: pass
 
-**Status**: □ discarded
+**Status**: ■ kept (overridden — user accepted 0.08ms regression for portability)
+
+**Commit**: 9ae95fc
 
 **Conclusion**: `sync.Once` cut experiment 5's regression from 0.22ms to 0.08ms, but the one-time `/proc/cpuinfo` parse (~200µs per process) still registers at 1000-run precision. Statistically significant (8× standard error) but practically negligible. The heuristic correctly produces 8 (physical core count) which SMT sweeps confirmed is optimal in both SMT-on and SMT-off modes. The portability benefit is real; the marginal regression is noise-scale.
 
-**Next**: Absolute latency floor reached. No more micro-optimizations warranted. User may choose hardcoded N=8 for purity or accept the 0.08ms for portability.
+**Next**: Objective fully achieved. Total improvement from baseline: 23.10ms → 6.77ms = 3.41x with portability.
 
 
