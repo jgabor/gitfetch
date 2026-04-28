@@ -35,7 +35,7 @@ No versioning block: Go modules version via git tags; no tags exist yet.
 | PROGRESS | .agentera/PROGRESS.md | 2026-04-17 | ■ current |
 | DECISIONS | .agentera/DECISIONS.md | 2026-04-15 | ■ current |
 | HEALTH | .agentera/HEALTH.md | 2026-04-17 | ■ current |
-| README | README.md | — | □ missing |
+| README | README.md | 2026-04-28 | ■ current |
 | CLAUDE | CLAUDE.md | — | □ missing |
 
 ## Audit log

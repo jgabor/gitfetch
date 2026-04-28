@@ -1,8 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [v0.1.0] · 2026-04-28
 
 ### Added
+- README.md with install, usage, configuration, and decay dashboard reference
 - Go module and standard project layout (cmd/gitfetch/, internal/config/)
 - TOML config package with XDG path resolution and default config generation
 - Cobra CLI with three modes: print (default), refresh, tui
@@ -29,7 +30,7 @@
 - `refresh` prunes cache entries whose repo was removed from config
 - `internal/core/` package with `RepoRow`, `BuildRows`, and `RepoColumnWidth` for shared data between print and TUI
 - `internal/theme/` package with `GradientBar` and `TierColor` helpers using `lipgloss` + `go-colorful` for per-character Lab-space interpolation
-- Dual-decay layout in print dashboard — commit and tag decay bars rendered side by side in a single "Decay" column
+- Dual-decay data pipeline: commit and tag freshness both computed; commit decay rendered as a gradient bar, tag tier colors the Version column text
 
 ### Changed
 - `decay.FreshLimit` tightened from 30 → 10 days to reflect "fresh" meaning actively-worked-on; decay tests and `core.BuildRows` fixtures updated accordingly; spectrum palette segments recompute automatically from the new tier bounds
@@ -54,9 +55,12 @@
 - Inlined the unexported `discoverRepos` shim in `internal/git/scanner.go` into `ResolveRepoPaths`; removes the `DiscoverRepos`/`discoverRepos` case-only name collision
 - Dropped unused `stripANSI` test helper in `internal/display/display_test.go`
 - Modernized three tui.go idioms: `slices.Contains` for the duplicate-path check, built-in `max()` for two clamp patterns, `fmt.Fprintf` for a `WriteString(fmt.Sprintf(...))` site — clears the three TODO Annoying linter hints parked during the Audit 2 plan
-- `internal/display/` refactored to print-only — no longer imports `bubbles/table`; `FormatDashboard` uses `theme.GradientBar` for both bars
+- `internal/display/` refactored to print-only — no longer imports `bubbles/table`; `FormatDashboard` uses `theme.GradientBar` for the commit bar
 - TUI widget functions (`NewTable`, `TableStyles`, `Columns`, `rowToTableRow`) moved from `internal/display/` to `internal/tui/`
 
 ### Fixed
 - TUI `r` key now actually triggers a refresh: scans all tracked repos, shows a `scanning…` status, writes the cache on disk, and updates displayed rows
 - TUI help text now correctly pairs `↓` with `j` instead of `k` (vim-style navigation)
+
+## [Unreleased]
+
