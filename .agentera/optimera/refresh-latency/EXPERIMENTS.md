@@ -80,3 +80,21 @@
 
 **Next**: Objective achieved at 3.45x. No further tuning needed for current repo count. If tracked repos double, re-sweep for optimum.
 
+## Experiment 5 · 2026-04-28 18:14
+
+**Hypothesis**: Parsing `/proc/cpuinfo` for physical core count (cores_per_socket × sockets) as a concurrency heuristic matches the N=8 optimum and generalizes across CPU topologies.
+
+**Method**: Replaced hardcoded `8` with `concurrencyBound()` that reads `/proc/cpuinfo` for `cpu cores` × `physical id` count. Falls back to `runtime.NumCPU()/2` on non-Linux. Measured with 1000-run harness.
+
+**Change**: `internal/git/scanner.go` — hardcoded N=8 → `/proc/cpuinfo`-derived physical core count
+
+**Metric**: 6.69ms → 6.91ms (⮋ 3.3% slower)
+
+**Regression**: pass
+
+**Status**: □ discarded
+
+**Conclusion**: Heuristic correctly produces 8 (1 socket × 8 cores) but parsing overhead adds ~200µs per invocation, causing a 0.22ms regression on this system. The heuristic is architecturally sound for portability — it would auto-tune to the physical core count on any Linux machine — but the hardcoded value is faster with no downside for the current machine.
+
+**Next**: User decision: accept marginal regression for portability, or keep hardcoded N=8. If portability is desired, optimize by caching the parsed value in a `sync.Once` init.
+
