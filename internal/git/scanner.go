@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,6 +26,54 @@ type ScanResult struct {
 type ScanOptions struct {
 	Author string
 	Remote string
+}
+
+var (
+	concurrencyOnce  sync.Once
+	concurrencyCache int
+)
+
+func concurrencyBound() int {
+	concurrencyOnce.Do(func() {
+		concurrencyCache = detectPhysicalCores()
+	})
+	return concurrencyCache
+}
+
+func detectPhysicalCores() int {
+	data, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		n := runtime.NumCPU() / 2
+		if n < 2 {
+			n = 2
+		}
+		return n
+	}
+	coresPerSocket := 0
+	sockets := make(map[string]bool)
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "cpu cores") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				v, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+				if err == nil && v > coresPerSocket {
+					coresPerSocket = v
+				}
+			}
+		}
+		if strings.HasPrefix(line, "physical id") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				sockets[strings.TrimSpace(parts[1])] = true
+			}
+		}
+	}
+	total := coresPerSocket * len(sockets)
+	if total < 2 {
+		total = 2
+	}
+	return total
 }
 
 func ScanRepo(repoPath string, opts ScanOptions) ScanResult {
@@ -78,7 +127,7 @@ func ScanAll(repoPaths []string, opts ScanOptions) []ScanResult {
 		return nil
 	}
 
-	sem := make(chan struct{}, 8)
+	sem := make(chan struct{}, concurrencyBound())
 	results := make([]ScanResult, n)
 	var wg sync.WaitGroup
 
