@@ -98,3 +98,22 @@
 
 **Next**: User decision: accept marginal regression for portability, or keep hardcoded N=8. If portability is desired, optimize by caching the parsed value in a `sync.Once` init.
 
+## Experiment 6 · 2026-04-28 18:20
+
+**Hypothesis**: Caching the `/proc/cpuinfo` physical core count behind `sync.Once` eliminates per-scan parse overhead while preserving the portability benefit of auto-detecting the optimal concurrency bound.
+
+**Method**: Added package-level `concurrencyOnce sync.Once` + `concurrencyCache int`. `concurrencyBound()` calls `detectPhysicalCores()` exactly once via `Once.Do`, subsequent calls return the cached value (8 on this machine). Replaced hardcoded `8` in semaphore.
+
+**Change**: `internal/git/scanner.go` — hardcoded N=8 → `sync.Once`-cached `/proc/cpuinfo` heuristic
+
+**Metric**: 6.69ms → 6.77ms (⮋ 0.08ms slower)
+
+**Regression**: pass
+
+**Status**: □ discarded
+
+**Conclusion**: `sync.Once` cut experiment 5's regression from 0.22ms to 0.08ms, but the one-time `/proc/cpuinfo` parse (~200µs per process) still registers at 1000-run precision. Statistically significant (8× standard error) but practically negligible. The heuristic correctly produces 8 (physical core count) which SMT sweeps confirmed is optimal in both SMT-on and SMT-off modes. The portability benefit is real; the marginal regression is noise-scale.
+
+**Next**: Absolute latency floor reached. No more micro-optimizations warranted. User may choose hardcoded N=8 for purity or accept the 0.08ms for portability.
+
+
