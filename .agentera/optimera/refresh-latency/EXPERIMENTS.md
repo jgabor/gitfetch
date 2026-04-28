@@ -56,5 +56,27 @@
 
 **Conclusion**: GOMAXPROCS over-subscribed — 16 concurrent goroutines fighting for git subprocess I/O created unnecessary overhead. N=4 is the sweet spot: enough parallelism to keep all cores busy, few enough to avoid scheduling churn. 2x target achieved (23.61ms → 8.53ms = 2.77x).
 
-**Next**: Objective met. No further experiments needed unless repo count grows or git process overhead changes materially.
+**Next**: Sweep concurrency values 1-16 to validate N=4 is the true optimum.
+
+## Experiment 4 · 2026-04-28 18:10
+
+**Hypothesis**: A parameter sweep of concurrency bounds from 1 to 16 will reveal N=4 is the knee of the curve, with diminishing returns beyond.
+
+**Method**: Swept N in {1, 2, 3, 4, 5, 6, 8, 12, 16} with 200-500 runs each. Measured mean wall-clock time via hyperfine.
+
+**Change**: `internal/git/scanner.go` — semaphore bound 4 → 8 (sweep-validated optimum)
+
+**Metric**: 8.35ms (N=4) → 6.69ms (N=8) (⮉ 19.9% faster)
+
+**Regression**: pass
+
+**Status**: ■ kept
+
+**Commit**: c105a48
+
+**Sweep data**: N=1:23.2, N=2:13.2, N=3:10.1, N=4:8.4, N=5:7.4, N=6:7.0, N=8:6.7, N=12:13.7, N=16:14.4. Knee at N=3-4, optimum at N=8, sharp performance cliff at N=12+.
+
+**Conclusion**: Hypothesis was wrong — N=4 is not the optimum. N=8 is 20% faster with equal stddev. Beyond N=8, kernel and Go runtime contention dominate. Total improvement from sequential baseline: 23.10ms → 6.69ms = 3.45x.
+
+**Next**: Objective achieved at 3.45x. No further tuning needed for current repo count. If tracked repos double, re-sweep for optimum.
 
