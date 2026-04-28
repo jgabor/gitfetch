@@ -10,7 +10,7 @@ go build -o gitfetch ./cmd/gitfetch/ || {
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 
-hyperfine --export-json "$tmp" --warmup 1 --min-runs 50 --max-runs 100 './gitfetch refresh' >/dev/null 2>&1 || {
+hyperfine --export-json "$tmp" --warmup 1 --min-runs 1000 --max-runs 5000 './gitfetch refresh' >/dev/null 2>&1 || {
   echo "Benchmark failed" >&2
   exit 1
 }
