@@ -17,7 +17,8 @@ type RepoEntry struct {
 }
 
 type Cache struct {
-	Repos map[string]RepoEntry `json:"repos"`
+	Repos        map[string]RepoEntry `json:"repos"`
+	RefreshCount int                  `json:"refresh_count"`
 }
 
 func New() *Cache {

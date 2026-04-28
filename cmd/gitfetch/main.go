@@ -34,6 +34,36 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("loading cache: %w", err)
 		}
 
+		c.RefreshCount++
+		if cfg.RefreshEvery > 0 && c.RefreshCount%cfg.RefreshEvery == 0 {
+			c.RefreshCount = 0
+			results := gitscanner.ScanAll(cfg.Repos, gitscanner.ScanOptions{})
+
+			repoSet := make(map[string]bool, len(cfg.Repos))
+			for _, r := range cfg.Repos {
+				repoSet[r] = true
+			}
+			for key := range c.Repos {
+				if !repoSet[key] {
+					delete(c.Repos, key)
+				}
+			}
+
+			for _, r := range results {
+				c.Repos[r.RepoPath] = cache.RepoEntry{
+					LastCommitDate: r.LastCommitDate,
+					LastTagDate:    r.LastTagDate,
+					LastTag:        r.LastTag,
+					Error:          r.Error,
+					ScannedAt:      r.ScannedAt,
+				}
+			}
+		}
+
+		if err := cache.Save(cachePath, c); err != nil {
+			return fmt.Errorf("saving cache: %w", err)
+		}
+
 		fmt.Print(display.FormatDashboard(cache.FilterByRepos(c, cfg.Repos), verbose))
 		return nil
 	},
@@ -96,6 +126,8 @@ var refreshCmd = &cobra.Command{
 				ok++
 			}
 		}
+
+		c.RefreshCount = 0
 
 		if err := cache.Save(cachePath, c); err != nil {
 			return fmt.Errorf("saving cache: %w", err)

@@ -14,8 +14,9 @@ type Display struct {
 }
 
 type Config struct {
-	Repos   []string `toml:"repos" comment:"paths to git repositories to track"`
-	Display Display  `toml:"display" comment:"display preferences"`
+	Repos        []string `toml:"repos" comment:"paths to git repositories to track"`
+	RefreshEvery int      `toml:"refresh_every" comment:"auto-refresh after N executions (0 = disabled)"`
+	Display      Display  `toml:"display" comment:"display preferences"`
 }
 
 func Default() *Config {
