@@ -5,8 +5,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -72,17 +74,36 @@ func ScanRepo(repoPath string, opts ScanOptions) ScanResult {
 
 func ScanAll(repoPaths []string, opts ScanOptions) []ScanResult {
 	expanded := ResolveRepoPaths(repoPaths)
-	results := make([]ScanResult, 0, len(expanded))
-	for _, path := range expanded {
-		r := ScanRepo(path, opts)
+	n := len(expanded)
+	if n == 0 {
+		return nil
+	}
+
+	sem := make(chan struct{}, runtime.GOMAXPROCS(0))
+	results := make([]ScanResult, n)
+	var wg sync.WaitGroup
+
+	for i, path := range expanded {
+		wg.Add(1)
+		go func(idx int, p string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			results[idx] = ScanRepo(p, opts)
+		}(i, path)
+	}
+	wg.Wait()
+
+	filtered := make([]ScanResult, 0, n)
+	for _, r := range results {
 		if opts.Author != "" || opts.Remote != "" {
 			if r.LastCommitDate == nil && r.Error == "" {
 				continue
 			}
 		}
-		results = append(results, r)
+		filtered = append(filtered, r)
 	}
-	return results
+	return filtered
 }
 
 func ResolveRepoPaths(paths []string) []string {

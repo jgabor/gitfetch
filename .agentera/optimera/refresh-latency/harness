@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Build the binary fresh before measuring.
+go build -o gitfetch ./cmd/gitfetch/ || {
+  echo "Build failed" >&2
+  exit 1
+}
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+hyperfine --export-json "$tmp" --warmup 1 --min-runs 50 --max-runs 100 './gitfetch refresh' >/dev/null 2>&1 || {
+  echo "Benchmark failed" >&2
+  exit 1
+}
+
+mean_ms=$(python3 -c "
+import sys, json
+with open('$tmp') as f:
+    d = json.load(f)
+print(round(d['results'][0]['mean'] * 1000, 2))
+")
+
+echo "{\"metric\": $mean_ms, \"direction\": \"lower\", \"unit\": \"ms\", \"detail\": \"mean wall-clock time of gitfetch refresh\"}"
