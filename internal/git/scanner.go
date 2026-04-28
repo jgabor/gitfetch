@@ -78,7 +78,7 @@ func ScanAll(repoPaths []string, opts ScanOptions) []ScanResult {
 		return nil
 	}
 
-	sem := make(chan struct{}, 4)
+	sem := make(chan struct{}, 8)
 	results := make([]ScanResult, n)
 	var wg sync.WaitGroup
 
