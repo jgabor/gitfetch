@@ -129,8 +129,12 @@ func Save(path string, cfg *Config) error {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
 
-	if err := os.WriteFile(path, b, 0o644); err != nil {
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, b, 0o644); err != nil {
 		return fmt.Errorf("writing config: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("atomic rename: %w", err)
 	}
 	return nil
 }

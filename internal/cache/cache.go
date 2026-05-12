@@ -40,7 +40,7 @@ func Load(path string) (*Cache, error) {
 	}
 	var c Cache
 	if err := json.Unmarshal(data, &c); err != nil {
-		return nil, fmt.Errorf("parsing cache %s: %w", path, err)
+		return New(), nil
 	}
 	if c.Repos == nil {
 		c.Repos = make(map[string]RepoEntry)
@@ -74,8 +74,12 @@ func Save(path string, c *Cache) error {
 	if err != nil {
 		return fmt.Errorf("marshaling cache: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
 		return fmt.Errorf("writing cache: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("atomic rename: %w", err)
 	}
 	return nil
 }

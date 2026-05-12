@@ -87,15 +87,18 @@ func TestLoadEmptyFileReturnsEmpty(t *testing.T) {
 	}
 }
 
-func TestLoadInvalidJSON(t *testing.T) {
+func TestLoadInvalidJSONReturnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cache.json")
 	if err := os.WriteFile(path, []byte("{not valid json}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := Load(path)
-	if err == nil {
-		t.Fatal("expected error for invalid JSON")
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() should not error on corrupt cache: %v", err)
+	}
+	if len(c.Repos) != 0 {
+		t.Errorf("expected empty cache for corrupt file, got %d entries", len(c.Repos))
 	}
 }
 
