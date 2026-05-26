@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 
@@ -47,27 +46,19 @@ func Build() error {
 		return err
 	}
 	out := binPath()
-	// Remove any prior binary so `go build` always writes a fresh one.
-	// Go's linker skips the write when the target already contains a
-	// matching Go BuildID — which a UPX-packed binary still carries,
-	// so subsequent builds would leave the packed file untouched and
-	// UPX would then fail with AlreadyPackedException.
 	if err := os.Remove(out); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if err := sh.RunWith(map[string]string{"CGO_ENABLED": "0"},
+	return sh.RunWith(map[string]string{"CGO_ENABLED": "0"},
 		"go", "build",
 		"-trimpath",
 		"-ldflags=-s -w",
 		"-o", out,
 		pkgPath,
-	); err != nil {
-		return err
-	}
-	return compress(out)
+	)
 }
 
-// Install builds, compresses, and installs gitfetch into GOBIN.
+// Install builds and installs gitfetch into GOBIN.
 func Install() error {
 	mg.Deps(Build)
 	dest := installDir()
@@ -87,19 +78,4 @@ func Clean() error {
 	return os.RemoveAll("bin")
 }
 
-// compress runs UPX --lzma on the built binary. Opt-in via GITFETCH_COMPRESS=1
-// because UPX-LZMA decompression adds ~58 ms to every exec — unacceptable for
-// a fetch-style CLI that must feel instant in .bashrc. The 3 MB size saving is
-// not worth the 60× startup cost; users who care about binary size can opt in.
-func compress(path string) error {
-	if os.Getenv("GITFETCH_COMPRESS") != "1" {
-		return nil
-	}
-	upx, err := exec.LookPath("upx")
-	if err != nil {
-		fmt.Println("upx not found; skipping compression")
-		return nil
-	}
-	fmt.Printf("compressing %s with upx\n", path)
-	return sh.Run(upx, "--best", "--overlay=strip", "--lzma", path)
-}
+
