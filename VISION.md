@@ -14,8 +14,8 @@ gitfetch makes repo neglect visible at a glance — the moment a terminal opens,
 
 - **Cache-first, always** — the default command reads a local cache and exits. No git subprocesses, no network, no delay. Sub-500ms guarantee for `.bashrc` use.
 - **Three modes, one tool** — `gitfetch` prints from cache, `gitfetch refresh` scans and updates cache, `gitfetch tui` manages repos interactively. Each mode does one thing well.
-- **Human-only output** — no JSON, no API, no machine consumers. The terminal is the interface. Color-coded progress bars speak for themselves.
-- **Two-column decay** — commit age and release age shown side by side. A repo can be actively committed but unreleased, or released but unmaintained. Both dimensions matter.
+- **Human-only output** — no JSON, no API, no machine consumers. The terminal is the interface. Commit activity sparklines and release age bars pair visual signals with exact ages.
+- **Two-column decay and activity** — commit age and release age shown side by side. A repo can be actively committed but unreleased, or released but unmaintained. Both dimensions matter. Cached weekly activity adds development history without slowing the default command.
 - **XDG conventions** — config in `XDG_CONFIG_HOME/gitfetch/`, cache in `XDG_DATA_HOME/gitfetch/`. Standard paths, no surprises.
 
 ## Direction

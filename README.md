@@ -25,7 +25,7 @@ gitfetch                           # dashboard from cache (instant)
 gitfetch refresh                   # rescan all tracked repos
 gitfetch refresh --author "jgabor" --remote "github"
 gitfetch tui                       # interactive repo manager
-gitfetch --verbose                 # show headers and color legend
+gitfetch --verbose                 # show legend and full scan errors
 ```
 
 | Command            |                                                                                                                                                       |
@@ -61,14 +61,33 @@ refresh_every = 0    # auto-rescan every N invocations (0 = never)
 
 [display]
 color = "auto"       # auto, always, never
-width = 0            # max column width (0 = auto-detect terminal)
+width = 0            # max dashboard width (0 = auto-detect terminal)
 ```
 
 Populate `repos` via `gitfetch tui` (`a` to add) or by editing the file. Paths support `~/` expansion. Removed repos are pruned from cache automatically.
 
 ## Decay dashboard
 
-One bar per repo showing commit freshness. Tag freshness colors the Version column text — green, yellow, orange, or red depending on how long since the last release.
+Each repo occupies one row with commit activity and age, release age, and version.
+An eight-character release bar shows age on a 180-day scale. Longer bars mean older
+releases; exact commit and release ages remain visible without color. A summary shows commit-tier counts,
+errors, unknown dates, and the range of cache scan ages.
+
+At 64 columns and above, the Commit column pairs an activity sparkline with the
+exact commit age. Its color matches commit freshness. The sparkline shows commits in eight completed
+UTC weeks (Monday to Monday), oldest first. All repos share a linear count scale.
+`·` means zero commits; `—` means unavailable data. Counts cover commits reachable
+from HEAD and use committer dates. The current incomplete week is excluded.
+Older cached weeks align to the current window, with unscanned weeks marked
+unavailable. Run `gitfetch refresh` once to populate activity in an older cache.
+`--verbose` shows the scale maximum and full scan errors.
+
+Below 64 columns, the sparkline and release bar are omitted while ages remain. Very narrow layouts progressively omit version, release, and commit
+columns to preserve the repo name. Long names and versions are truncated to fit.
+When stdout is not a terminal, the default width is 80; `display.width` caps it.
+
+The TUI uses the same columns and scale. Details beneath the selected row show
+the full path, version, timestamps, displayed activity period, and scan error.
 
 | Tier    | Threshold   | Bar    |
 | ------- | ----------- | ------ |
@@ -81,7 +100,7 @@ Gradient bars use per-character Lab-color-space interpolation (`go-colorful`, `l
 
 ## Internals
 
-No daemon. No database. No network. Scanner calls `git log -1 --format=%ct` and `git for-each-ref --sort=-creatordate --format="%(refname:short) %(creatordate:unix)" --count=1 refs/tags/v*`, writes JSON to `$XDG_DATA_HOME/gitfetch/cache.json`. Everything else reads cache. Always instant.
+No daemon. No database. No network. Scanner calls `git log -1 --format=%ct`, an eight-week `git log --since-as-filter` for cached activity counts, and `git for-each-ref --sort=-creatordate --format="%(refname:short) %(creatordate:unix)" --count=1 refs/tags/v*`, writes JSON to `$XDG_DATA_HOME/gitfetch/cache.json`. Everything else reads cache. Always instant.
 
 ## License
 

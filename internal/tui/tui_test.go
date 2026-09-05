@@ -266,10 +266,10 @@ func TestViewQuitting(t *testing.T) {
 
 func TestVisibleRangeBounds(t *testing.T) {
 	cases := []struct {
-		name             string
-		cursor           int
-		total            int
-		available        int
+		name               string
+		cursor             int
+		total              int
+		available          int
 		wantStart, wantEnd int
 	}{
 		{"zero total", 0, 0, 10, 0, 0},
@@ -301,10 +301,6 @@ func TestNewTableCreatesColumns(t *testing.T) {
 		"/r1": {LastCommitDate: &commitDate, ScannedAt: time.Now().UTC()},
 	}
 	tm, _ := NewTable(repos, 10, false, 80)
-	cols := Columns(colRepoMin, ComputeBarWidth(80, colRepoMin))
-	if len(cols) != 6 {
-		t.Errorf("expected 6 columns, got %d", len(cols))
-	}
 	rows := tm.Rows()
 	if len(rows) != 1 {
 		t.Errorf("expected 1 row, got %d", len(rows))
@@ -948,26 +944,67 @@ func TestErrorClearsOnSuccessfulRemove(t *testing.T) {
 	}
 }
 
-func TestComputeBarWidthWideTerminal(t *testing.T) {
-	barW := ComputeBarWidth(120, 20)
-	if barW <= 0 {
-		t.Errorf("bar width should be positive for wide terminal, got %d", barW)
-	}
-	if barW < 30 {
-		t.Errorf("bar width should be >= 30 for 120-col terminal, got %d", barW)
+func TestTableResponsiveLayout(t *testing.T) {
+	now := time.Now()
+	repos := map[string]cache.RepoEntry{"/長い名前-project": {LastCommitDate: &now, LastTagDate: &now, LastTag: "v1.2.3", ScannedAt: now, WeeklyCommits: []int{0, 1, 2, 3, 4, 5, 6, 8}}}
+	for _, width := range []int{20, 40, 64, 80, 120} {
+		tm, _ := NewTable(repos, 10, true, width)
+		out := tm.View()
+		for _, line := range strings.Split(out, "\n") {
+			if lipgloss.Width(line) > width {
+				t.Errorf("width %d overflow: %q", width, line)
+			}
+		}
+		if width >= 64 {
+			if !strings.Contains(out, "Commit") || strings.Contains(out, "Commit 8w") || !strings.Contains(tm.SelectedRow()[2], "·▁▂▃▄▅▆█") {
+				t.Errorf("commit column missing activity: %s", out)
+			}
+			if len(tm.SelectedRow()) != 5 {
+				t.Error("expected hidden path plus repo, commit, release, version")
+			}
+		}
+		if width < 64 && strings.Contains(out, "░") {
+			t.Errorf("narrow table should omit bars: %s", out)
+		}
+		if tm.SelectedRow()[0] != "/長い名前-project" {
+			t.Fatal("hidden path was truncated")
+		}
 	}
 }
 
-func TestComputeBarWidthNarrowTerminal(t *testing.T) {
-	barW := ComputeBarWidth(20, 10)
-	if barW != 1 {
-		t.Errorf("bar width should clamp to 1 for very narrow terminal, got %d", barW)
+func TestSelectedDetailsPreserveValues(t *testing.T) {
+	now := time.Date(2026, 9, 5, 10, 0, 0, 0, time.UTC)
+	path := "/long/path/project"
+	c := cache.New()
+	c.Repos[path] = cache.RepoEntry{LastCommitDate: &now, LastTagDate: &now, LastTag: "v1.2.3", ScannedAt: time.Now().AddDate(0, 0, -14), WeeklyCommits: []int{0, 1, 2, 3, 4, 5, 6, 7}, Error: "a full scan error with useful context"}
+	m := NewModel(&config.Config{Repos: []string{path}}, "", c, "")
+	m.width = 120
+	m.rebuildTable()
+	out := m.selectedDetails()
+	for _, want := range []string{path, "2026-09-05T10:00:00Z", "v1.2.3", cache.WeekStart(time.Now()).AddDate(0, 0, -56).Format("2006-01-02") + " to " + cache.WeekStart(time.Now()).Format("2006-01-02"), "a full scan error with useful context"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q: %s", want, out)
+		}
 	}
 }
 
-func TestComputeBarWidthZeroTermWidth(t *testing.T) {
-	barW := ComputeBarWidth(0, 20)
-	if barW != 30 {
-		t.Errorf("bar width should default to 30 when termWidth=0, got %d", barW)
+func TestPageNavigationUsesVisibleHeight(t *testing.T) {
+	c := cache.New()
+	repos := []string{}
+	now := time.Now()
+	for i := 0; i < 50; i++ {
+		path := fmt.Sprintf("/long/path/that/needs/to/wrap/in/a/narrow/terminal/repo-%02d", i)
+		repos = append(repos, path)
+		c.Repos[path] = cache.RepoEntry{LastCommitDate: &now, ScannedAt: now, WeeklyCommits: []int{0, 1, 2, 3, 4, 5, 6, 7}}
+	}
+	m := NewModel(&config.Config{Repos: repos}, "", c, "")
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 30})
+	m = updated.(model)
+	// Table height includes its two-line header; page navigation uses body rows.
+	visibleRows := lipgloss.Height(m.table.View()) - 2
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
+	m = updated.(model)
+	if m.table.Cursor() != visibleRows {
+		t.Errorf("page jumped %d rows; visible body has %d", m.table.Cursor(), visibleRows)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -362,5 +363,50 @@ func TestListRemotesSucceedsOnGitRepo(t *testing.T) {
 	}
 	if len(remotes) != 0 {
 		t.Errorf("expected no remotes on fresh repo; got %v", remotes)
+	}
+}
+
+func TestWeeklyCommitsBoundariesAndNonMonotonicDates(t *testing.T) {
+	dir := t.TempDir()
+	gitInit(t, dir)
+	scannedAt := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
+	// The window is July 6 through August 31. Older ancestors behind an
+	// out-of-order timestamp must still be traversed; the current week is out.
+	dates := []string{
+		"2026-07-06T00:00:00Z", "2026-07-12T23:59:59Z",
+		"2026-07-13T00:00:00Z", "2026-08-30T23:59:59Z",
+		"2026-07-05T23:59:59Z", "2026-08-31T00:00:00Z",
+	}
+	for _, date := range dates {
+		cmd := exec.Command("git", "-C", dir, "commit", "--allow-empty", "-m", date)
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_DATE=2020-01-01T00:00:00Z", "GIT_COMMITTER_DATE="+date)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("commit: %v: %s", err, out)
+		}
+	}
+	got, err := weeklyCommits(dir, scannedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []int{2, 1, 0, 0, 0, 0, 0, 1}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("weekly counts = %v, want %v", got, want)
+	}
+	result := ScanRepo(dir, ScanOptions{})
+	if result.Error != "" || len(result.WeeklyCommits) != 8 {
+		t.Fatalf("scan activity: %+v", result)
+	}
+}
+
+func TestScanRepoEmptyActivity(t *testing.T) {
+	dir := t.TempDir()
+	gitInit(t, dir)
+	result := ScanRepo(dir, ScanOptions{})
+	if !reflect.DeepEqual(result.WeeklyCommits, make([]int, 8)) {
+		t.Fatalf("empty repository activity = %v", result.WeeklyCommits)
+	}
+	invalid := ScanRepo(t.TempDir(), ScanOptions{})
+	if invalid.WeeklyCommits != nil {
+		t.Fatalf("invalid repository should have unknown activity: %v", invalid.WeeklyCommits)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
 	"github.com/jgabor/gitfetch/internal/display"
@@ -52,6 +53,7 @@ var rootCmd = &cobra.Command{
 			for _, r := range results {
 				c.Repos[r.RepoPath] = cache.RepoEntry{
 					LastCommitDate: r.LastCommitDate,
+					WeeklyCommits:  r.WeeklyCommits,
 					LastTagDate:    r.LastTagDate,
 					LastTag:        r.LastTag,
 					Error:          r.Error,
@@ -64,7 +66,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("saving cache: %w", err)
 		}
 
-		fmt.Print(display.FormatDashboard(cache.FilterByRepos(c, cfg.Repos), verbose))
+		fmt.Print(display.FormatDashboardWidth(cache.FilterByRepos(c, cfg.Repos), verbose, dashboardWidth(cfg)))
 		return nil
 	},
 }
@@ -113,6 +115,7 @@ var refreshCmd = &cobra.Command{
 		for _, r := range results {
 			c.Repos[r.RepoPath] = cache.RepoEntry{
 				LastCommitDate: r.LastCommitDate,
+				WeeklyCommits:  r.WeeklyCommits,
 				LastTagDate:    r.LastTagDate,
 				LastTag:        r.LastTag,
 				Error:          r.Error,
@@ -134,7 +137,7 @@ var refreshCmd = &cobra.Command{
 		}
 
 		fmt.Printf("\nrefreshed %d repos: %d ok, %d failed\n", len(results), ok, fail)
-		fmt.Print(display.FormatDashboard(c.Repos, verbose))
+		fmt.Print(display.FormatDashboardWidth(c.Repos, verbose, dashboardWidth(cfg)))
 		return nil
 	},
 }
@@ -174,4 +177,12 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func dashboardWidth(cfg *config.Config) int {
+	width, _, _ := term.GetSize(os.Stdout.Fd())
+	if cfg.Display.Width > 0 && (width <= 0 || cfg.Display.Width < width) {
+		width = cfg.Display.Width
+	}
+	return width
 }

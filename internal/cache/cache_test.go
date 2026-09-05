@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -254,5 +255,44 @@ func TestCacheJSONFormat(t *testing.T) {
 	}
 	if len(repos) != 1 {
 		t.Fatalf("expected 1 repo entry, got %d", len(repos))
+	}
+}
+
+func TestWeeklyActivityCacheCompatibility(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.json")
+	if err := os.WriteFile(path, []byte(`{"repos":{"old":{"scanned_at":"2026-09-01T00:00:00Z"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Repos["old"].WeeklyCommits != nil {
+		t.Fatal("legacy cache must retain unknown activity")
+	}
+	c.Repos["active"] = RepoEntry{WeeklyCommits: []int{0, 1, 2, 0, 4, 5, 0, 7}}
+	c.Repos["empty"] = RepoEntry{WeeklyCommits: make([]int, 8)}
+	if err := Save(path, c); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(c.Repos, loaded.Repos) {
+		t.Fatalf("cache activity changed in round trip: %#v", loaded.Repos)
+	}
+}
+
+func TestWeekStartUsesUTCMonday(t *testing.T) {
+	for _, input := range []string{"2026-09-06T23:59:59Z", "2026-08-31T00:00:00Z", "2026-09-07T01:00:00+02:00"} {
+		date, err := time.Parse(time.RFC3339, input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := time.Date(2026, 8, 31, 0, 0, 0, 0, time.UTC)
+		if got := WeekStart(date); !got.Equal(want) {
+			t.Errorf("WeekStart(%s) = %s, want %s", input, got, want)
+		}
 	}
 }

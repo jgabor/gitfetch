@@ -12,6 +12,7 @@ type RepoEntry struct {
 	LastCommitDate *time.Time `json:"last_commit_date,omitempty"`
 	LastTagDate    *time.Time `json:"last_tag_date,omitempty"`
 	LastTag        string     `json:"last_tag,omitempty"`
+	WeeklyCommits  []int      `json:"weekly_commits,omitempty"`
 	Error          string     `json:"error,omitempty"`
 	ScannedAt      time.Time  `json:"scanned_at"`
 }
@@ -82,4 +83,12 @@ func Save(path string, c *Cache) error {
 		return fmt.Errorf("atomic rename: %w", err)
 	}
 	return nil
+}
+
+// WeekStart returns Monday midnight UTC for the week containing t. Activity
+// bins cover the eight completed weeks immediately before this boundary.
+func WeekStart(t time.Time) time.Time {
+	utc := t.UTC()
+	day := time.Date(utc.Year(), utc.Month(), utc.Day(), 0, 0, 0, 0, time.UTC)
+	return day.AddDate(0, 0, -(int(day.Weekday())+6)%7)
 }

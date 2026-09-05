@@ -1,23 +1,16 @@
 package tui
 
 import (
-	"fmt"
+	"github.com/charmbracelet/x/ansi"
+	"strings"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/core"
-	"github.com/jgabor/gitfetch/internal/theme"
+	"github.com/jgabor/gitfetch/internal/display"
 	"github.com/mattn/go-runewidth"
-)
-
-const (
-	colRepoMin      = 4
-	colVersion      = 10
-	colTier         = 8
-	defaultBarWidth = 30
-	colAge          = 5
 )
 
 func truncatePlain(s string, maxLen int) string {
@@ -31,30 +24,10 @@ func truncatePlain(s string, maxLen int) string {
 	return runewidth.Truncate(s, maxLen, "")
 }
 
-func ComputeBarWidth(termWidth, repoWidth int) int {
-	if termWidth <= 0 {
-		return defaultBarWidth
-	}
-	barW := termWidth - repoWidth - colVersion - colTier - colAge - 10
-	if barW < 1 {
-		barW = 1
-	}
-	return barW
-}
-
-func Columns(repoWidth, barW int) []table.Column {
-	return []table.Column{
-		{Title: "", Width: 0},
-		{Title: "Repo", Width: repoWidth},
-		{Title: "Version", Width: colVersion},
-		{Title: "Tier", Width: colTier},
-		{Title: "Commit", Width: barW},
-		{Title: "Age", Width: colAge},
-	}
-}
-
 func TableStyles() table.Styles {
 	s := table.DefaultStyles()
+	s.Cell = s.Cell.Padding(0, 1, 0, 0)
+	s.Header = s.Header.Padding(0, 1, 0, 0)
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).
@@ -67,57 +40,38 @@ func TableStyles() table.Styles {
 	return s
 }
 
-func rowToTableRow(row core.RepoRow, fullPath string, repoWidth, barW int) table.Row {
-	if row.Error != "" {
-		return table.Row{
-			fullPath,
-			truncatePlain(row.Name, repoWidth),
-			"",
-			"error",
-			truncatePlain(row.Error, barW),
-			"",
-		}
-	}
-
-	tagCell := truncatePlain(row.Tag, colVersion)
-	if row.HasTag {
-		tagColor := lipgloss.Color(row.TagTier.Color())
-		tagCell = lipgloss.NewStyle().Foreground(tagColor).Render(tagCell)
-	}
-
-	return table.Row{
-		fullPath,
-		truncatePlain(row.Name, repoWidth),
-		tagCell,
-		row.CommitTier.String(),
-		theme.GradientBar(row.CommitDays, row.CommitProgress, barW),
-		fmt.Sprintf("%dd", row.CommitDays),
-	}
-}
-
 func NewTable(repos map[string]cache.RepoEntry, height int, focused bool, termWidth int) (table.Model, []string) {
 	rows, paths := core.BuildRows(repos)
-	repoWidth := core.RepoColumnWidth(rows)
-	barW := ComputeBarWidth(termWidth, repoWidth)
+
+	layout := display.NewLayout(rows, termWidth)
+	// Bubbles also pads the final column; reserve that cell when needed.
+	wanted := len(layout.Columns)
+	for _, c := range layout.Columns {
+		wanted += c.Width
+	}
+	if termWidth > 0 && wanted > termWidth {
+		layout.Columns[0].Width = max(1, layout.Columns[0].Width-1)
+	}
+	cols := []table.Column{{Title: "", Width: 0}}
+	totalWidth := 0
+	for _, c := range layout.Columns {
+		cols = append(cols, table.Column{Title: c.Title, Width: c.Width})
+		totalWidth += c.Width + 1
+	}
 	tableRows := make([]table.Row, 0, len(rows))
 	for i, r := range rows {
-		tableRows = append(tableRows, rowToTableRow(r, paths[i], repoWidth, barW))
-	}
-
-	totalWidth := 0
-	cols := Columns(repoWidth, barW)
-	for _, c := range cols {
-		totalWidth += c.Width
-		if c.Width > 0 {
-			totalWidth += 2
+		cells := layout.Cells(r)
+		for j := range cells {
+			cells[j] = ansi.Truncate(strings.NewReplacer("\n", " ", "\r", " ", "\t", " ").Replace(cells[j]), layout.Columns[j].Width, "…")
 		}
+		tableRows = append(tableRows, append(table.Row{paths[i]}, cells...))
 	}
 
 	t := table.New(
 		table.WithColumns(cols),
 		table.WithRows(tableRows),
-		table.WithHeight(height),
-		table.WithWidth(totalWidth),
+		table.WithHeight(max(2, height)),
+		table.WithWidth(totalWidth-1),
 		table.WithFocused(focused),
 	)
 

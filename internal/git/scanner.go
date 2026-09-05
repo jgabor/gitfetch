@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/jgabor/gitfetch/internal/cache"
 )
 
 type ScanResult struct {
@@ -17,6 +19,7 @@ type ScanResult struct {
 	LastCommitDate *time.Time `json:"last_commit_date,omitempty"`
 	LastTagDate    *time.Time `json:"last_tag_date,omitempty"`
 	LastTag        string     `json:"last_tag,omitempty"`
+	WeeklyCommits  []int      `json:"weekly_commits,omitempty"`
 	Authors        []string   `json:"authors,omitempty"`
 	Remotes        []string   `json:"remotes,omitempty"`
 	Error          string     `json:"error,omitempty"`
@@ -109,9 +112,19 @@ func ScanRepo(repoPath string, opts ScanOptions) ScanResult {
 	commitDate, err := lastCommitDate(repoPath)
 	if err != nil {
 		result.Error = err.Error()
+		// An unborn repository has known zero activity, even though its commit
+		// date remains unavailable and keeps the existing scan error.
+		count, countErr := exec.Command("git", "-C", repoPath, "rev-list", "--all", "--count").Output()
+		if countErr == nil && strings.TrimSpace(string(count)) == "0" {
+			result.WeeklyCommits = make([]int, 8)
+		}
 		return result
 	}
 	result.LastCommitDate = &commitDate
+	result.WeeklyCommits, err = weeklyCommits(repoPath, result.ScannedAt)
+	if err != nil {
+		result.Error = err.Error()
+	}
 
 	tagName, tagDate, _ := lastTagInfo(repoPath)
 	result.LastTag = tagName
@@ -252,6 +265,33 @@ func lastCommitDate(repoPath string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("last commit date: empty repository")
 	}
 	return parseTimestamp(ts)
+}
+
+// weeklyCommits counts commits reachable from HEAD in the eight completed
+// Monday-to-Monday UTC weeks before scannedAt, ordered oldest first.
+func weeklyCommits(repoPath string, scannedAt time.Time) ([]int, error) {
+	end := cache.WeekStart(scannedAt)
+	start := end.AddDate(0, 0, -8*7)
+	// Unlike --since, --since-as-filter traverses past older commits, so
+	// non-monotonic committer dates cannot hide activity in the window.
+	cmd := exec.Command("git", "-C", repoPath, "log", "HEAD", "--format=%ct",
+		"--since-as-filter="+start.Format(time.RFC3339))
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("weekly activity: %w", sanitizeGitError(err, out))
+	}
+	counts := make([]int, 8)
+	for _, timestamp := range strings.Fields(string(out)) {
+		date, err := parseTimestamp(timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("weekly activity: %w", err)
+		}
+		if !date.Before(start) && date.Before(end) {
+			week := int(date.Sub(start) / (7 * 24 * time.Hour))
+			counts[week]++
+		}
+	}
+	return counts, nil
 }
 
 func lastTagInfo(repoPath string) (string, *time.Time, error) {

@@ -48,7 +48,7 @@ func TestFormatDashboardLegendVerbose(t *testing.T) {
 	}
 }
 
-func TestFormatDashboardQuietOmitsChrome(t *testing.T) {
+func TestFormatDashboardDefaultHasCompactHeaders(t *testing.T) {
 	commitDate := makeDate(10)
 	repos := map[string]cache.RepoEntry{
 		"/home/user/r1": {LastCommitDate: &commitDate, ScannedAt: time.Now().UTC()},
@@ -60,8 +60,8 @@ func TestFormatDashboardQuietOmitsChrome(t *testing.T) {
 	if strings.Contains(out, "gitfetch --") {
 		t.Errorf("quiet dashboard must omit app header: %q", out)
 	}
-	if strings.Contains(out, "Repo") && strings.Contains(out, "Version") && strings.Contains(out, "Commit") {
-		t.Errorf("quiet dashboard must omit table headers: %q", out)
+	if !strings.Contains(out, "Repo") || !strings.Contains(out, "Version") || !strings.Contains(out, "Commit") {
+		t.Errorf("default dashboard must show compact table headers: %q", out)
 	}
 	if !strings.Contains(out, "r1") {
 		t.Errorf("quiet dashboard must still show repo row: %q", out)
@@ -92,7 +92,7 @@ func TestFormatDashboardMultipleRepos(t *testing.T) {
 	}
 }
 
-func TestFormatDashboardDualDecayBars(t *testing.T) {
+func TestFormatDashboardReleaseDecayBar(t *testing.T) {
 	commitDate := makeDate(10)
 	tagDate := makeDate(5)
 	repos := map[string]cache.RepoEntry{
@@ -106,12 +106,12 @@ func TestFormatDashboardDualDecayBars(t *testing.T) {
 	out := FormatDashboard(repos, false)
 	stripped := ansi.Strip(out)
 	barCount := strings.Count(stripped, "█") + strings.Count(stripped, "░")
-	if barCount != 30 {
-		t.Errorf("expected exactly 30 bar glyphs for commit bar, got %d", barCount)
+	if barCount != 8 {
+		t.Errorf("expected one eight-character release bar, got %d glyphs", barCount)
 	}
 }
 
-func TestFormatDashboardSingleDecayBar(t *testing.T) {
+func TestFormatDashboardCommitHasNoDecayBar(t *testing.T) {
 	commitDate := makeDate(10)
 	repos := map[string]cache.RepoEntry{
 		"/r1": {
@@ -122,9 +122,62 @@ func TestFormatDashboardSingleDecayBar(t *testing.T) {
 	out := FormatDashboard(repos, false)
 	stripped := ansi.Strip(out)
 	barCount := strings.Count(stripped, "█") + strings.Count(stripped, "░")
-	if barCount != 30 {
-		t.Errorf("expected exactly 30 bar glyphs for single commit bar, got %d", barCount)
+	if barCount != 0 {
+		t.Errorf("commit must not have a decay bar, got %d glyphs", barCount)
 	}
 }
 
+func TestResponsiveDashboard(t *testing.T) {
+	now := time.Now()
+	repos := map[string]cache.RepoEntry{
+		"/超長い名前-project": {LastCommitDate: &now, LastTagDate: &now, LastTag: "v1.2.3", ScannedAt: now, WeeklyCommits: []int{0, 1, 2, 3, 4, 5, 6, 8}},
+		"/unknown":       {},
+	}
+	for _, width := range []int{1, 20, 40, 64, 80, 120} {
+		out := FormatDashboardWidth(repos, false, width)
+		for _, line := range strings.Split(out, "\n") {
+			if ansi.StringWidth(line) > width {
+				t.Errorf("width %d overflow: %q", width, line)
+			}
+		}
+		if width >= 64 {
+			if !strings.Contains(out, "Commit") || strings.Contains(out, "Commit 8w") || !strings.Contains(ansi.Strip(out), "·▁▂▃▄▅▆█      0d") {
+				t.Errorf("commit column must pair activity with age: %s", out)
+			}
+			if strings.Count(out, "·▁▂▃▄▅▆█") != 1 || strings.Contains(out, "Activity 8w") {
+				t.Errorf("activity must appear only in commit column: %s", out)
+			}
+		}
+		if width < 64 && strings.Contains(out, "░") {
+			t.Errorf("narrow output contains bars: %s", out)
+		}
+	}
+	out := ansi.Strip(FormatDashboard(repos, false))
+	if !strings.Contains(out, "1 unknown") {
+		t.Errorf("missing date counted as fresh: %s", out)
+	}
+}
 
+func TestSparklineSharedScaleAndMissing(t *testing.T) {
+	if got := Sparkline([]int{0, 1, 2, 4, 8, 16, 32, 64}, 64); got != "·▁▁▁▁▂▄█" {
+		t.Errorf("got %q", got)
+	}
+	if got := Sparkline([]int{-1, 0, 1, 2, 3, 4, 5, 8}, 64); got != "—·▁▁▁▁▁▁" {
+		t.Errorf("got %q", got)
+	}
+	if got := Sparkline(nil, 64); got != "—" {
+		t.Errorf("legacy cache activity: %q", got)
+	}
+}
+
+func TestSummaryPartialRefresh(t *testing.T) {
+	now := time.Now()
+	old := now.Add(-48 * time.Hour)
+	repos := map[string]cache.RepoEntry{"/old": {LastCommitDate: &old, ScannedAt: old}, "/new": {LastCommitDate: &now, ScannedAt: now}, "/bad": {Error: "broken"}}
+	out := FormatDashboard(repos, false)
+	for _, want := range []string{"2 fresh", "1 errors", "scanned <1m–2d ago", "some unknown"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q: %s", want, out)
+		}
+	}
+}

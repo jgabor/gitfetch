@@ -11,8 +11,11 @@ import (
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/jgabor/gitfetch/internal/cache"
 	"github.com/jgabor/gitfetch/internal/config"
+	"github.com/jgabor/gitfetch/internal/core"
+	"github.com/jgabor/gitfetch/internal/display"
 	gitscanner "github.com/jgabor/gitfetch/internal/git"
 	"github.com/mattn/go-runewidth"
 )
@@ -105,7 +108,8 @@ func buildTableModel(repos map[string]cache.RepoEntry, height, termWidth int) ta
 
 func (m *model) rebuildTable() {
 	fc := cache.FilterByRepos(m.c, m.repos)
-	m.table = buildTableModel(fc, m.height-6, m.width)
+	m.table = buildTableModel(fc, m.height-12, m.width)
+	m.fitTable()
 }
 
 func NewModel(cfg *config.Config, cfgPath string, c *cache.Cache, cachePath string) model {
@@ -127,6 +131,27 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	updated, cmd := m.update(msg)
+	next := updated.(model)
+	next.fitTable()
+	return next, cmd
+}
+
+func (m *model) fitTable() {
+	height := m.height - lipgloss.Height(m.selectedDetails()) - 8
+	if m.statusMsg != "" {
+		height--
+	}
+	if m.err != nil {
+		height--
+	}
+	if m.mode == modeAdding || m.mode == modeConfirming {
+		height--
+	}
+	m.table.SetHeight(max(3, height))
+}
+
+func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
@@ -404,6 +429,7 @@ func finalizeScan(m model) (tea.Model, tea.Cmd) {
 	for _, r := range m.scanResults {
 		m.c.Repos[r.RepoPath] = cache.RepoEntry{
 			LastCommitDate: r.LastCommitDate,
+			WeeklyCommits:  r.WeeklyCommits,
 			LastTagDate:    r.LastTagDate,
 			LastTag:        r.LastTag,
 			Error:          r.Error,
@@ -474,7 +500,13 @@ func (m model) View() tea.View {
 		b.WriteString(helpStyle.Render("No scan data yet. Press 'r' to refresh."))
 		b.WriteString("\n")
 	} else {
+		rows, _ := core.BuildRows(cache.FilterByRepos(m.c, m.repos))
+		b.WriteString(ansi.Truncate(display.Summary(rows, time.Now()), max(1, m.width), "…"))
+		b.WriteByte('\n')
+		details := m.selectedDetails()
 		b.WriteString(m.table.View())
+		b.WriteByte('\n')
+		b.WriteString(details)
 		b.WriteString("\n")
 	}
 
@@ -594,4 +626,37 @@ func Run(cfg *config.Config, cfgPath string, c *cache.Cache, cachePath string) e
 	p := tea.NewProgram(m)
 	_, err := p.Run()
 	return err
+}
+
+func (m model) selectedDetails() string {
+	selected := m.table.SelectedRow()
+	if len(selected) == 0 {
+		return ""
+	}
+	path := selected[0]
+	entry, ok := m.c.Repos[path]
+	if !ok {
+		return ""
+	}
+	date := func(t *time.Time) string {
+		if t == nil || t.IsZero() {
+			return "—"
+		}
+		return t.UTC().Format(time.RFC3339)
+	}
+	text := path + "\nCommit: " + date(entry.LastCommitDate) + " · Release: " + date(entry.LastTagDate)
+	if entry.LastTag != "" {
+		text += " · " + entry.LastTag
+	}
+	text += "\nScanned: " + date(&entry.ScannedAt)
+	if len(entry.WeeklyCommits) == 8 {
+		end := cache.WeekStart(time.Now())
+		text += " · Activity: " + end.AddDate(0, 0, -56).Format("2006-01-02") + " to " + end.Format("2006-01-02") + " (exclusive, UTC)"
+	} else {
+		text += " · Activity unavailable; refresh to collect"
+	}
+	if entry.Error != "" {
+		text += "\nError: " + entry.Error
+	}
+	return ansi.Wrap(text, max(1, m.width), "")
 }

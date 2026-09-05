@@ -161,3 +161,24 @@ func TestRepoColumnWidthRespectsMin(t *testing.T) {
 		t.Errorf("repoColumnWidth(short) = %d, want %d", got, colRepoMin)
 	}
 }
+
+func TestAlignedActivity(t *testing.T) {
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	entry := cache.RepoEntry{ScannedAt: now.AddDate(0, 0, -14), WeeklyCommits: []int{1, 2, 3, 4, 5, 6, 7, 8}}
+	got := alignedActivity(entry, now)
+	want := []int{3, 4, 5, 6, 7, 8, -1, -1}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+	entry.ScannedAt = now.AddDate(0, 0, -70)
+	for _, n := range alignedActivity(entry, now) {
+		if n != -1 {
+			t.Fatal("expired bins must be unknown")
+		}
+	}
+	if alignedActivity(cache.RepoEntry{}, now) != nil {
+		t.Fatal("legacy data must be unavailable")
+	}
+}
